@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mpsynth"
+version = "0.1.0"
+description = "Shallow approximate quantum state-preparation circuits from Matrix Product States"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "MPSynth contributors" }]
+keywords = ["quantum", "state-preparation", "matrix-product-state", "tensor-network", "qasm", "qir"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+dev = ["pytest>=7.4", "scipy>=1.11", "matplotlib>=3.7"]
+
+[project.scripts]
+mpsynth = "mpsynth.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/mpsynth/mpsynth"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mpsynth"]
+artifacts = ["src/mpsynth/ui/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+filterwarnings = ["error"]
