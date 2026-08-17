@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Run MPSynth straight from a clone, with nothing installed.
+
+    ./mpsynth examples/lognormal_4096.csv -f 0.999 -o prepare.qasm
+
+On Windows, or if the file has lost its executable bit:
+
+    python mpsynth examples/lognormal_4096.csv -f 0.999 -o prepare.qasm
+
+NumPy is the one dependency -- MPSynth's core is a singular value decomposition, so
+there is no honest stdlib-only fallback. If it is missing but `uv` is available, this
+re-runs itself through `uv run --with numpy` rather than making you install anything.
+"""
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+
+if sys.version_info < (3, 10):
+    sys.exit(
+        "mpsynth needs Python 3.10 or newer; this is "
+        f"{sys.version_info.major}.{sys.version_info.minor}"
+    )
+
+sys.path.insert(0, str(HERE / "src"))
+
+
+def _bootstrap_numpy() -> None:
+    """Re-exec through uv with numpy available, or explain how to get it."""
+    # Guard against looping if the re-exec still cannot import numpy.
+    if os.environ.get("MPSYNTH_BOOTSTRAPPED"):
+        sys.exit("mpsynth needs numpy, and `uv run --with numpy` did not provide it.")
+
+    uv = shutil.which("uv")
+    if uv:
+        print("numpy not found -- re-running via `uv run --with numpy`...", file=sys.stderr)
+        os.execve(
+            uv,
+            [uv, "run", "--no-project", "--with", "numpy",
+             "python", str(HERE / "mpsynth"), *sys.argv[1:]],
+            {**os.environ, "MPSYNTH_BOOTSTRAPPED": "1"},
+        )
+
+    sys.exit(
+        "mpsynth needs numpy (its core is a singular value decomposition).\n"
+        "\n"
+        "  python3 -m pip install numpy       # then re-run this command\n"
+        "\n"
+        "or install uv once and this script will handle it itself:\n"
+        "\n"
+        "  curl -LsSf https://astral.sh/uv/install.sh | sh"
+    )
+
+
+try:
+    import numpy  # noqa: F401
+except ImportError:
+    _bootstrap_numpy()
+
+from mpsynth.cli import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())

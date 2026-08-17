@@ -17,13 +17,79 @@ exponentially.
    exact amplitude encoding   ~262,142 CNOTs
    MPSynth, 4 layers               161 CNOTs      1,600x fewer
 ```
----
-
 ## Quick start
 
-```bash
-pip install -e .
+Two commands. No install, no virtualenv, no `pip install -e .`:
+
+```console
+git clone https://github.com/YOUR-ORG/mpsynth && cd mpsynth
+
+./mpsynth examples/lognormal_4096.csv -f 0.999 -o prepare.qasm
 ```
+
+```
+mpsynth 0.1.0  examples/lognormal_4096.csv  (fidelity >= 0.999)
+
+layers   CNOT  depth  2q-depth   fidelity  infidelity  accuracy (full bar = 5 nines)
+----------------------------------------------------------------------------------------
+     1     30    109        30   0.998335   1.665e-03  ##########........
+     2     60    133        36   0.999494   5.057e-04  ############......  <-- meets target
+     3     89    151        41   0.999749   2.507e-04  #############.....  <-- meets target
+     4    118    176        48   0.999899   1.013e-04  ##############....  <-- meets target
+     5    144    195        54   0.999961   3.884e-05  ################..  <-- meets target
+     6    169    216        60   0.999971   2.882e-05  ################..  <-- meets target
+     7    197    237        66   0.999979   2.077e-05  #################.  <-- meets target
+     8    224    256        71   0.999984   1.584e-05  #################.  <-- meets target
+
+exact amplitude encoding baseline: ~4094 CNOTs (12 qubits, bond dimension 48)
+
+cheapest circuit at fidelity >= 0.999: 2 layer(s), 60 CNOTs, 2q-depth 36 (68.2x fewer CNOTs than exact encoding)
+wrote prepare.qasm (qasm3, 2 layers, 60 CNOTs)
+```
+
+That is the whole setup. `./mpsynth` works from any directory
+(`/path/to/mpsynth/mpsynth data.csv -o out.qasm`), and on Windows as
+`python mpsynth data.csv -o out.qasm`.
+
+**60 CNOTs instead of ~4094**, at 99.95% fidelity — a lognormal asset-price density,
+the payload of a quantum option pricer. The bar is log-scaled on `1 - F`, so diminishing
+returns read straight off it: layers 7-8 buy less than one extra nine for 164 more CNOTs.
+
+**One dependency: numpy.** MPSynth's core is a singular value decomposition, so unlike a
+pure-stdlib tool there is no honest way around it. If numpy is missing but you have
+[`uv`](https://docs.astral.sh/uv/), `./mpsynth` re-runs itself through
+`uv run --with numpy` and you never notice; otherwise it tells you the one line to run.
+
+### More
+
+```console
+./mpsynth examples/gaussian_1024.csv          # smooth density, 10 qubits
+./mpsynth examples/chirp_1024.csv -L 6        # oscillatory signal -- deliberately harder
+./mpsynth gaussian:16                         # built-in generator, no data file
+./mpsynth random:10                           # an input that does NOT compress
+./mpsynth data.csv -o out.py --format qiskit  # qasm2 | qasm3 | qir | qsharp | pennylane | qiskit
+./mpsynth synth data.csv -f 0.99 -o out.qasm  # stop at the target instead of profiling
+./mpsynth show                                # datasets and export targets
+```
+
+Inputs may be `.csv`, `.txt`, `.npy`, `.npz`, `.json`, or a built-in generator spec such
+as `gaussian:12` (name : qubits [: seed]). Vectors are normalised and zero-padded to a
+power of two automatically. With no subcommand, `./mpsynth <input>` profiles the
+trade-off; `-o` also writes the cheapest circuit that meets `-f`.
+
+---
+
+## Install (optional)
+
+Nothing here is required — `./mpsynth` in a clone is fully functional. Install only if
+you want `mpsynth` on your PATH without the clone path, or the library in your own code:
+
+```console
+uv tool install .           # or: pipx install .
+pip install -e ".[dev]"     # into an active virtualenv, + pytest/scipy/matplotlib
+```
+
+## Use it as a library
 
 ```python
 import numpy as np
@@ -54,16 +120,7 @@ input bond dim    11
 24 CNOTs instead of ~1022. Single-qubit gates are cheap and fast on real hardware;
 `cnot` and `two_qubit_depth` are the numbers that decide whether the state survives.
 
-### Command line
-
-```bash
-mpsynth synth data.npy -f 0.99 --format qasm3 -o prepare.qasm
-mpsynth profile data.npy -L 8 --plot tradeoff.png
-mpsynth show
-```
-
-Inputs may be `.npy`, `.npz`, `.json`, `.csv`, or `.txt`. Vectors are normalised and
-zero-padded to a power of two automatically.
+---
 
 ## How it works
 
