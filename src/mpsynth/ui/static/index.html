@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MPSynth</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="ident">
+    <span class="wordmark">MPSYNTH</span>
+    <span class="rev" id="version"></span>
+  </div>
+
+  <form class="console" id="console" autocomplete="off">
+    <label class="ctl grow">
+      <span>source</span>
+      <input id="source" list="datasets" value="lognormal:12" spellcheck="false">
+      <datalist id="datasets"></datalist>
+    </label>
+    <label class="ctl">
+      <span>target F</span>
+      <input id="fidelity" type="text" inputmode="decimal" value="0.999" size="7">
+    </label>
+    <label class="ctl">
+      <span>layers</span>
+      <input id="layers" type="number" min="1" max="24" value="8">
+    </label>
+    <label class="ctl">
+      <span>order</span>
+      <select id="order">
+        <option value="big">big</option>
+        <option value="little">little</option>
+      </select>
+    </label>
+    <button id="upload-btn" type="button" class="ctl-btn">file…</button>
+    <input id="upload" type="file" accept=".csv,.txt,.dat,.json" hidden>
+    <button id="run" type="submit" class="ctl-btn go">run</button>
+  </form>
+
+  <button id="theme" class="ctl-btn" aria-label="Invert">inv</button>
+</header>
+
+<div class="ticker" id="ticker" data-state="idle"><span id="ticker-text">ready</span></div>
+
+<main id="workspace" hidden>
+
+  <!-- ═══ readout ═══════════════════════════════════════════════════════ -->
+  <section class="readout" id="readout">
+    <div class="cell"><i>cnot</i><b class="count" id="r-cnot"></b></div>
+    <div class="cell"><i>2q depth</i><b class="count" id="r-2qd"></b></div>
+    <div class="cell"><i>depth</i><b class="count" id="r-depth"></b></div>
+    <div class="cell"><i>1q gates</i><b class="count" id="r-1q"></b></div>
+    <div class="cell"><i>layers</i><b class="count" id="r-layers"></b></div>
+    <div class="cell span2"><i>fidelity</i><b id="r-fid" class="wide"></b></div>
+    <div class="cell"><i>1 − F</i><b id="r-infid" class="wide"></b></div>
+    <div class="cell ratio"><i>vs exact 2ⁿ−2</i><b><span class="count" id="r-ratio"></span>×</b></div>
+  </section>
+
+  <!-- ═══ strips: one shared x-axis, one linked cursor ══════════════════ -->
+  <section class="block strips" id="strips">
+    <div class="block-head">
+      <h2>amplitudes</h2>
+      <div class="cursor-readout" id="cursor-readout"><span></span></div>
+    </div>
+
+    <div class="strip" data-label="target · prepared">
+      <div class="plot" id="plot-signal"></div>
+      <div class="rule"></div>
+    </div>
+    <div class="strip" data-label="residual">
+      <div class="plot" id="plot-residual"></div>
+      <div class="rule"></div>
+    </div>
+    <div class="strip-axis" id="strip-axis"></div>
+  </section>
+
+  <!-- ═══ trade-off + structure ═════════════════════════════════════════ -->
+  <section class="block span-2">
+    <div class="block-head">
+      <h2>fidelity / cost</h2>
+      <span class="meta">select a point</span>
+    </div>
+    <div class="plot tall" id="plot-tradeoff"></div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>entanglement</h2>
+      <span class="meta" id="ent-meta"></span>
+    </div>
+    <div class="plot" id="plot-entropy"></div>
+    <p class="margin-note">Shaded ceiling is <code>min(k+1, n−k−1)</code>. Distance below
+      it is the compression headroom.</p>
+    <div class="plot" id="plot-spectrum"></div>
+    <p class="margin-note">Schmidt values at the centre cut. The discarded tail bounds
+      <code>1 − F</code>.</p>
+  </section>
+
+  <!-- ═══ checks ════════════════════════════════════════════════════════ -->
+  <section class="block span-3" id="checks-block">
+    <div class="block-head">
+      <h2>checks</h2>
+      <span class="meta">re-simulated from the emitted gate list</span>
+    </div>
+    <table class="checks" id="checks">
+      <thead><tr><th>quantity</th><th>measured</th><th>bound</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- ═══ circuit ═══════════════════════════════════════════════════════ -->
+  <section class="block span-3">
+    <div class="block-head">
+      <h2>circuit</h2>
+      <span class="meta" id="circuit-meta"></span>
+    </div>
+    <div class="scroller" id="circuit"></div>
+  </section>
+
+  <!-- ═══ export ════════════════════════════════════════════════════════ -->
+  <section class="block span-3">
+    <div class="block-head">
+      <h2>emit</h2>
+      <span class="meta">
+        <select id="format"></select>
+        <button id="copy" class="ctl-btn">copy</button>
+        <button id="download" class="ctl-btn">save</button>
+      </span>
+    </div>
+    <pre class="code" id="export"><code></code></pre>
+  </section>
+
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>

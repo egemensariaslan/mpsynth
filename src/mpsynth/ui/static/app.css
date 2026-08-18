@@ -1,0 +1,335 @@
+/* MPSynth — instrument panel.
+ *
+ * Three things here are load-bearing CSS rather than decoration:
+ *
+ *   1. --cursor  a single number on the strip container drives every crosshair,
+ *                its label and the readout position through calc(). One JS write,
+ *                N synchronised rules, no per-element bookkeeping.
+ *   2. --n       registered with @property as <integer>, so it *transitions*, and
+ *                counter() prints it. The readout counts up in pure CSS.
+ *   3. --pad-l   the plot's inner margins live here, and the SVG reads them back,
+ *                so the CSS ruler and the drawn axis cannot drift apart.
+ */
+
+@property --cursor { syntax: "<number>"; initial-value: 0; inherits: true; }
+@property --n      { syntax: "<integer>"; initial-value: 0; inherits: false; }
+
+:root {
+  --paper: #0b0b0c;
+  --ink: #ededec;
+  --ink-2: #8b8b88;
+  --ink-3: #56564f;
+  --hair: #26262a;
+  --hair-2: #17171a;
+  --signal: #7fd1c1;
+  --signal-2: #d8b26a;
+  --ceiling: #7a3b3b;
+  --warn: #d0764a;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: "Helvetica Neue", Inter, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+
+  --pad-l: 54px;   /* plot gutters — read back by the SVG renderer */
+  --pad-r: 16px;
+  --pad-t: 12px;
+  --pad-b: 8px;
+}
+
+:root[data-theme="light"] {
+  --paper: #f4f4f1;
+  --ink: #16161a;
+  --ink-2: #56564f;
+  --ink-3: #9b9b94;
+  --hair: #d3d3cd;
+  --hair-2: #e6e6e0;
+  --signal: #1c7f6d;
+  --signal-2: #8a6117;
+  --ceiling: #c9a3a3;
+  --warn: #a8431a;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px/1.45 var(--sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, .mono { font-family: var(--mono); }
+
+/* ── command bar ───────────────────────────────────────────────────────── */
+
+.bar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: stretch; gap: 0;
+  border-bottom: 1px solid var(--hair);
+  background: var(--paper);
+}
+
+.ident {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 0 18px; border-right: 1px solid var(--hair);
+  align-self: center; align-items: baseline;
+}
+.wordmark { font: 600 13px/1 var(--mono); letter-spacing: .22em; }
+.rev { font: 10px/1 var(--mono); color: var(--ink-3); }
+
+.console { display: flex; flex: 1; min-width: 0; }
+
+.ctl {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px; border-right: 1px solid var(--hair);
+  min-width: 0;
+}
+.ctl.grow { flex: 1 1 auto; }
+.ctl > span {
+  font: 9.5px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); white-space: nowrap;
+}
+
+input, select {
+  background: none; color: var(--ink); border: 0;
+  font: 12.5px/1 var(--mono); font-variant-numeric: tabular-nums;
+  padding: 12px 0; min-width: 0; width: 100%;
+}
+input:focus, select:focus { outline: none; color: var(--signal); }
+select { cursor: pointer; }
+input[type="number"] { width: 4ch; }
+
+.ctl-btn {
+  background: none; border: 0; border-right: 1px solid var(--hair);
+  color: var(--ink-2); cursor: pointer;
+  font: 11px/1 var(--mono); letter-spacing: .1em;
+  padding: 0 16px;
+}
+.ctl-btn:hover { color: var(--ink); background: var(--hair-2); }
+.ctl-btn.go { color: var(--signal); }
+.ctl-btn.go:disabled { color: var(--ink-3); cursor: progress; }
+#theme { border-right: 0; border-left: 1px solid var(--hair); }
+
+/* ── ticker ────────────────────────────────────────────────────────────── */
+
+.ticker {
+  font: 10.5px/1 var(--mono); letter-spacing: .08em;
+  padding: 7px 18px; border-bottom: 1px solid var(--hair);
+  color: var(--ink-3); display: flex; align-items: center; gap: 8px;
+}
+.ticker::before {
+  content: ""; width: 5px; height: 5px; background: currentColor; flex: none;
+}
+.ticker[data-state="busy"] { color: var(--signal); }
+.ticker[data-state="busy"]::before { animation: blink .7s steps(2, jump-none) infinite; }
+.ticker[data-state="error"] { color: var(--warn); }
+@keyframes blink { 50% { opacity: .15; } }
+
+/* ── page grid ─────────────────────────────────────────────────────────── */
+
+main {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+
+.block {
+  border-right: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+  padding: 0 0 14px;
+  min-width: 0;
+  container-type: inline-size;
+}
+.block:nth-child(3n) { border-right: 0; }
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: 1 / -1; border-right: 0; }
+
+.block-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 11px 18px 10px;
+  border-bottom: 1px solid var(--hair-2);
+  margin-bottom: 12px;
+}
+h2 {
+  margin: 0; font: 600 10px/1 var(--sans);
+  letter-spacing: .18em; text-transform: uppercase; color: var(--ink-2);
+}
+.meta {
+  font: 10px/1 var(--mono); color: var(--ink-3);
+  display: flex; align-items: center; gap: 10px;
+}
+.meta select { width: auto; padding: 0; font-size: 11px; }
+
+.margin-note {
+  margin: 2px 18px 14px; padding-left: 10px;
+  border-left: 1px solid var(--hair);
+  font: 10.5px/1.5 var(--sans); color: var(--ink-3); max-width: 46ch;
+}
+.margin-note code { font-size: 10px; color: var(--ink-2); }
+
+@media (max-width: 1080px) {
+  main { grid-template-columns: 1fr; }
+  .block, .span-2, .span-3 { grid-column: 1 / -1; border-right: 0; }
+}
+
+/* ── readout ───────────────────────────────────────────────────────────── */
+
+.readout {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));
+  border-bottom: 1px solid var(--hair);
+}
+.readout .cell {
+  padding: 14px 18px 16px;
+  border-right: 1px solid var(--hair-2);
+  min-width: 0;
+}
+.readout .cell:last-child { border-right: 0; }
+.readout i {
+  display: block; font: normal 9.5px/1 var(--sans);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+  margin-bottom: 9px;
+}
+.readout b {
+  font: 400 26px/1 var(--mono); font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em; display: block;
+}
+.readout b.wide { font-size: 19px; }
+.ratio b { color: var(--signal); }
+
+/* The count-up is entirely CSS: --n is a registered <integer>, so it can be
+   transitioned, and counter() renders it. JS only assigns the final value. */
+.count { counter-reset: n var(--n); transition: --n 850ms cubic-bezier(.16, .9, .28, 1); }
+.count::after { content: counter(n); }
+@media (prefers-reduced-motion: reduce) { .count { transition: none; } }
+
+@media (max-width: 1080px) { .readout { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 560px)  { .readout { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── plots ─────────────────────────────────────────────────────────────── */
+
+.plot {
+  position: relative;
+  height: 150px;
+  margin: 0 0 4px;
+  /* Gridlines are painted by CSS so the SVG carries data ink only. */
+  background-image:
+    repeating-linear-gradient(to top, var(--hair-2) 0 1px, transparent 1px 25%);
+  background-position: left calc(100% - var(--pad-b));
+  background-size:
+    calc(100% - var(--pad-l) - var(--pad-r)) calc(100% - var(--pad-t) - var(--pad-b));
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  padding-left: var(--pad-l);
+  padding-right: var(--pad-r);
+  margin-left: 0;
+}
+.plot.tall { height: 372px; }
+.plot.squat { height: 118px; }
+.plot > svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  overflow: visible; display: block;
+}
+
+@container (max-width: 460px) {
+  .plot { height: 120px; }
+  .plot.tall { height: 210px; }
+}
+
+.tick { fill: var(--ink-3); font: 9px/1 var(--mono); }
+.axis-name { fill: var(--ink-3); font: 9px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+.trace { fill: none; stroke: var(--signal); stroke-width: 1.25; }
+.trace-ghost { fill: none; stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 2; }
+.trace-2 { fill: none; stroke: var(--signal-2); stroke-width: 1.25; }
+.fill { fill: color-mix(in srgb, var(--signal) 12%, transparent); }
+.ceiling { fill: color-mix(in srgb, var(--ceiling) 22%, transparent); stroke: var(--ceiling); stroke-width: 1; stroke-dasharray: 3 3; }
+.baseline { stroke: var(--hair); stroke-width: 1; }
+
+.node { fill: var(--paper); stroke: var(--signal); stroke-width: 1.4; cursor: pointer; }
+.node:hover { fill: var(--signal); }
+.node[data-meets="0"] { stroke: var(--ink-3); }
+.node[data-current="1"] { fill: var(--signal); stroke: var(--ink); stroke-width: 1.6; }
+.node-tag { fill: var(--ink-3); font: 8.5px/1 var(--mono); pointer-events: none; }
+.limit { stroke: var(--signal-2); stroke-width: 1; stroke-dasharray: 4 3; }
+.limit-tag { fill: var(--signal-2); font: 9px/1 var(--mono); }
+
+/* ── strips: one cursor, many rules ────────────────────────────────────── */
+
+.strips { grid-column: 1 / -1; --cursor: 0; }
+.strip { position: relative; }
+.strip::before {
+  content: attr(data-label);
+  position: absolute; left: var(--pad-l); top: 0; z-index: 2;
+  font: 9px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-3); padding-left: 6px;
+}
+
+/* Every rule derives its position from the same --cursor and the same gutters
+   the SVG uses. Nothing here is set per-element by script. */
+.rule {
+  position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none;
+  left: calc(var(--pad-l) + var(--cursor) * (100% - var(--pad-l) - var(--pad-r)));
+  background: var(--signal);
+  opacity: 0; transition: opacity .12s;
+}
+.strips[data-live="1"] .rule { opacity: .55; }
+
+.strip-axis { position: relative; height: 26px; }
+.cursor-readout {
+  font: 10px/1 var(--mono); color: var(--ink-2);
+  min-height: 12px; white-space: nowrap;
+}
+.cursor-readout span { color: var(--ink-3); }
+
+/* ── checks ────────────────────────────────────────────────────────────── */
+
+.checks { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+.checks th {
+  text-align: left; font: 9.5px/1 var(--sans); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 400;
+  padding: 0 18px 8px; border-bottom: 1px solid var(--hair-2);
+}
+.checks td { padding: 9px 18px; border-bottom: 1px solid var(--hair-2); vertical-align: top; }
+.checks tr:last-child td { border-bottom: 0; }
+.checks .q { color: var(--ink); }
+.checks .q small { display: block; font: 10px/1.4 var(--sans); color: var(--ink-3); margin-top: 3px; }
+.checks .num { text-align: right; width: 12ch; color: var(--ink-2); }
+.checks .verdict { width: 8ch; color: var(--ink-3); }
+.checks tr[data-ok="false"] td { background: color-mix(in srgb, var(--warn) 7%, transparent); }
+.checks tr[data-ok="false"] .num,
+.checks tr[data-ok="false"] .verdict { color: var(--warn); }
+.checks tr[data-ok="false"] .q { box-shadow: inset 2px 0 0 var(--warn); }
+
+/* A failing row is visible from the section header without any script. */
+#checks-block:has(tr[data-ok="false"]) .block-head { border-bottom-color: var(--warn); }
+#checks-block:has(tr[data-ok="false"]) h2::after {
+  content: " / out of bound"; color: var(--warn); letter-spacing: .06em;
+}
+
+/* ── circuit ───────────────────────────────────────────────────────────── */
+
+.scroller { overflow-x: auto; padding: 0 18px 10px; }
+.scroller::-webkit-scrollbar { height: 8px; }
+.scroller::-webkit-scrollbar-thumb { background: var(--hair); }
+.scroller::-webkit-scrollbar-track { background: transparent; }
+
+.wire { stroke: var(--hair); stroke-width: 1; }
+.wire-tag { fill: var(--ink-3); font: 9px/1 var(--mono); }
+.op { fill: var(--paper); stroke: var(--signal); stroke-width: 1; }
+.op.ry { stroke: var(--signal-2); }
+.op-tag { font: 8px/1 var(--mono); text-anchor: middle; dominant-baseline: central; fill: var(--ink-2); }
+.link { stroke: var(--ink-2); stroke-width: 1.1; }
+.ctrl { fill: var(--ink-2); }
+.targ { fill: none; stroke: var(--ink-2); stroke-width: 1.1; }
+
+/* ── code ──────────────────────────────────────────────────────────────── */
+
+.code {
+  margin: 0 18px; max-height: 300px; overflow: auto;
+  border-left: 1px solid var(--hair); padding: 0 0 0 14px;
+  font: 11px/1.65 var(--mono); color: var(--ink-2); white-space: pre;
+}
+.code::-webkit-scrollbar { width: 8px; height: 8px; }
+.code::-webkit-scrollbar-thumb { background: var(--hair); }

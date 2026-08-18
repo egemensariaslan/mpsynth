@@ -17,6 +17,9 @@ exponentially.
    exact amplitude encoding   ~262,142 CNOTs
    MPSynth, 4 layers               161 CNOTs      1,600x fewer
 ```
+
+---
+
 ## Quick start
 
 Two commands. No install, no virtualenv, no `pip install -e .`:
@@ -60,6 +63,45 @@ pure-stdlib tool there is no honest way around it. If numpy is missing but you h
 [`uv`](https://docs.astral.sh/uv/), `./mpsynth` re-runs itself through
 `uv run --with numpy` and you never notice; otherwise it tells you the one line to run.
 
+### The workbench
+
+```console
+./mpsynth ui
+```
+
+![MPSynth workbench](docs/workbench.jpg)
+
+Three static files served by Python's own `http.server` — no Node, no CDN, no build.
+Plots are SVG paths; gridlines, gutters and cursor rules are CSS.
+
+A trade-off table tells you what a circuit costs. This tells you **why**:
+
+| panel | reads |
+| --- | --- |
+| entanglement | `S(k)` per cut against the ceiling `min(k+1, n−k−1)` |
+| schmidt spectrum | singular values at the centre cut, log axis — the tail that gets discarded |
+| fidelity / cost | every layer count as a point; click one to synthesise and verify it |
+| amplitudes | target and prepared on one axis, signed residual below, linked cursor |
+| checks | measured quantity against its bound |
+
+Three things in the stylesheet do real work rather than decoration:
+
+- `--cursor` is one number on the strip container. Both crosshairs, and anything else
+  keyed to it, position themselves from it through `calc()`. One write, N rules.
+- `--n` is registered with `@property` as an `<integer>`, so it can be *transitioned*,
+  and `counter()` prints it — the readout counts up with no animation loop in JS.
+- `--pad-l`/`--pad-r` hold the plot gutters, and the SVG renderer reads them back out
+  of the cascade, so the CSS ruler and the drawn axis cannot disagree.
+
+#### Failure looks like failure
+
+Feed it `random:10`: entropy fills the ceiling (97%), the Schmidt spectrum flattens with
+no tail to discard, fidelity/cost goes horizontal at F ≈ 0.27, and `S̄ / S_max` reads
+`4.6×10⁻¹ / < 0.70` — out of bound. The circuit is still certified normalised and
+unitary; it is the *input* that cannot be compressed.
+
+![Incompressible input](docs/workbench-incompressible.jpg)
+
 ### More
 
 ```console
@@ -69,6 +111,7 @@ pure-stdlib tool there is no honest way around it. If numpy is missing but you h
 ./mpsynth random:10                           # an input that does NOT compress
 ./mpsynth data.csv -o out.py --format qiskit  # qasm2 | qasm3 | qir | qsharp | pennylane | qiskit
 ./mpsynth synth data.csv -f 0.99 -o out.qasm  # stop at the target instead of profiling
+./mpsynth ui                                  # interactive workbench
 ./mpsynth show                                # datasets and export targets
 ```
 
@@ -168,6 +211,8 @@ decomposition, using the fewest CX gates its Weyl-chamber coordinates allow.
 | `mpsynth.circuit` | Backend-independent IR, metrics, simulation, peephole optimiser |
 | `mpsynth.exporters` | OpenQASM 2/3, QIR, Q#, PennyLane, Qiskit |
 | `mpsynth.profiler` | Fidelity-vs-depth trade-off curves (text, markdown, JSON, PNG) |
+| `mpsynth.analysis` | Entanglement spectra, verification, JSON payloads for the UI |
+| `mpsynth.ui` | Local workbench: stdlib HTTP server + hand-written HTML/CSS/SVG |
 
 ---
 
