@@ -15,33 +15,39 @@
   </div>
 
   <form class="console" id="console" autocomplete="off">
-    <label class="ctl grow">
+    <label class="field field-source">
       <span>source</span>
       <input id="source" list="datasets" value="lognormal:12" spellcheck="false">
       <datalist id="datasets"></datalist>
     </label>
-    <label class="ctl">
-      <span>target F</span>
-      <input id="fidelity" type="text" inputmode="decimal" value="0.999" size="7">
-    </label>
-    <label class="ctl">
-      <span>layers</span>
-      <input id="layers" type="number" min="1" max="24" value="8">
-    </label>
-    <label class="ctl">
-      <span>order</span>
-      <select id="order">
-        <option value="big">big</option>
-        <option value="little">little</option>
-      </select>
-    </label>
-    <button id="upload-btn" type="button" class="ctl-btn" aria-label="Upload a data file">file…</button>
-    <input id="upload" type="file" accept=".csv,.txt,.dat,.json" hidden aria-label="Data file">
-    <button id="run" type="submit" class="ctl-btn go" aria-keyshortcuts="Control+Enter">run</button>
-    <button id="report" type="button" class="ctl-btn" aria-label="Save a standalone report">report</button>
+
+    <div class="param-group" role="group" aria-label="Synthesis parameters">
+      <label class="field field-tight">
+        <span>target F</span>
+        <input id="fidelity" type="text" inputmode="decimal" value="0.999" size="7">
+      </label>
+      <label class="field field-tight">
+        <span>layers</span>
+        <input id="layers" type="number" min="1" max="24" value="8">
+      </label>
+      <label class="field field-tight">
+        <span>order</span>
+        <select id="order">
+          <option value="big">big</option>
+          <option value="little">little</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="btn-group" role="group" aria-label="Actions">
+      <button id="upload-btn" type="button" class="btn" aria-label="Upload a data file">File…</button>
+      <input id="upload" type="file" accept=".csv,.txt,.dat,.json" hidden aria-label="Data file">
+      <button id="report" type="button" class="btn" aria-label="Save a standalone report">Report</button>
+      <button id="run" type="submit" class="btn btn-primary" aria-keyshortcuts="Control+Enter">Run</button>
+    </div>
   </form>
 
-  <button id="theme" type="button" class="ctl-btn" aria-label="Toggle light/dark theme">inv</button>
+  <button id="theme" type="button" class="btn btn-icon" aria-label="Toggle light/dark theme">◐</button>
 </header>
 
 <div class="ticker" id="ticker" data-state="idle" role="status" aria-live="polite"><span id="ticker-text">ready</span></div>
@@ -50,28 +56,28 @@
 
   <!-- ═══ readout ═══════════════════════════════════════════════════════ -->
   <section class="readout" id="readout">
-    <div class="cell"><i>cnot</i><b class="count" id="r-cnot"></b></div>
-    <div class="cell"><i>2q depth</i><b class="count" id="r-2qd"></b></div>
-    <div class="cell"><i>depth</i><b class="count" id="r-depth"></b></div>
-    <div class="cell"><i>1q gates</i><b class="count" id="r-1q"></b></div>
-    <div class="cell"><i>layers</i><b class="count" id="r-layers"></b></div>
-    <div class="cell span2"><i>fidelity</i><b id="r-fid" class="wide"></b></div>
-    <div class="cell"><i>1 − F</i><b id="r-infid" class="wide"></b></div>
-    <div class="cell ratio"><i>vs exact 2ⁿ−2</i><b><span class="count" id="r-ratio"></span>×</b></div>
+    <div class="stat"><i>CNOT</i><b class="count" id="r-cnot"></b></div>
+    <div class="stat"><i>2Q Depth</i><b class="count" id="r-2qd"></b></div>
+    <div class="stat"><i>Depth</i><b class="count" id="r-depth"></b></div>
+    <div class="stat"><i>1Q Gates</i><b class="count" id="r-1q"></b></div>
+    <div class="stat"><i>Layers</i><b class="count" id="r-layers"></b></div>
+    <div class="stat"><i>Fidelity</i><b id="r-fid" class="wide"></b></div>
+    <div class="stat"><i>1 − F</i><b id="r-infid" class="wide"></b></div>
+    <div class="stat stat-ratio"><i>vs. Exact 2ⁿ−2</i><b><span class="count" id="r-ratio"></span>×</b></div>
   </section>
 
   <!-- ═══ strips: one shared x-axis, one linked cursor ══════════════════ -->
   <section class="block strips" id="strips">
     <div class="block-head">
-      <h2>amplitudes</h2>
+      <h2>Amplitudes</h2>
       <div class="cursor-readout" id="cursor-readout"><span></span></div>
     </div>
 
-    <div class="strip" data-label="target · prepared">
+    <div class="strip" data-label="Target · Prepared">
       <div class="plot" id="plot-signal"></div>
       <div class="rule"></div>
     </div>
-    <div class="strip" data-label="residual">
+    <div class="strip" data-label="Residual">
       <div class="plot" id="plot-residual"></div>
       <div class="rule"></div>
     </div>
@@ -81,7 +87,7 @@
   <!-- ═══ trade-off + structure ═════════════════════════════════════════ -->
   <section class="block span-2">
     <div class="block-head">
-      <h2>fidelity / cost</h2>
+      <h2>Fidelity / Cost</h2>
       <span class="meta">select a point</span>
     </div>
     <div class="plot tall" id="plot-tradeoff"></div>
@@ -89,7 +95,7 @@
 
   <section class="block">
     <div class="block-head">
-      <h2>entanglement</h2>
+      <h2>Entanglement</h2>
       <span class="meta" id="ent-meta"></span>
     </div>
     <div class="plot" id="plot-entropy"></div>
@@ -103,11 +109,11 @@
   <!-- ═══ checks ════════════════════════════════════════════════════════ -->
   <section class="block span-3" id="checks-block">
     <div class="block-head">
-      <h2>checks</h2>
+      <h2>Checks</h2>
       <span class="meta">re-simulated from the emitted gate list</span>
     </div>
     <table class="checks" id="checks">
-      <thead><tr><th>quantity</th><th>measured</th><th>bound</th><th></th></tr></thead>
+      <thead><tr><th>Quantity</th><th>Measured</th><th>Bound</th><th>Status</th></tr></thead>
       <tbody></tbody>
     </table>
   </section>
@@ -115,23 +121,38 @@
   <!-- ═══ circuit ═══════════════════════════════════════════════════════ -->
   <section class="block span-3">
     <div class="block-head">
-      <h2>circuit</h2>
+      <h2>Circuit</h2>
       <span class="meta" id="circuit-meta"></span>
     </div>
-    <div class="scroller" id="circuit"></div>
+    <div class="viewer">
+      <div class="viewer-bar">
+        <span class="viewer-tag">nearest-neighbour staircase</span>
+        <span class="viewer-hint">scroll to pan →</span>
+      </div>
+      <div class="scroller" id="circuit"></div>
+    </div>
   </section>
 
   <!-- ═══ export ════════════════════════════════════════════════════════ -->
   <section class="block span-3">
     <div class="block-head">
-      <h2>emit</h2>
+      <h2>Emit</h2>
       <span class="meta">
         <select id="format"></select>
-        <button id="copy" class="ctl-btn">copy</button>
-        <button id="download" class="ctl-btn">save</button>
+        <button id="copy" class="btn">Copy</button>
+        <button id="download" class="btn">Save</button>
       </span>
     </div>
-    <pre class="code" id="export"><code></code></pre>
+    <div class="editor">
+      <div class="editor-bar">
+        <span class="editor-lang" id="export-lang">qasm3</span>
+        <span class="editor-meta" id="export-lines"></span>
+      </div>
+      <div class="editor-body">
+        <pre class="gutter" id="export-gutter" aria-hidden="true"></pre>
+        <pre class="code" id="export"><code></code></pre>
+      </div>
+    </div>
   </section>
 
 </main>

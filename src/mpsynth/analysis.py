@@ -24,7 +24,7 @@ MAX_PLOT_POINTS = 1024
 
 
 def _decimate(values: np.ndarray, limit: int = MAX_PLOT_POINTS) -> tuple[list[float], int]:
-    """Subsample for plotting, reporting the stride so the axis can stay honest."""
+    """Subsample for plotting; the stride lets the axis report true indices, not decimated ones."""
     stride = max(1, int(np.ceil(values.size / limit)))
     return [float(v) for v in values[::stride]], stride
 
@@ -151,8 +151,8 @@ def layer_detail(analysis: Analysis, layers: int) -> dict:
             produced = produced * np.exp(-1j * np.angle(overlap))
         # The chart plots real parts, so the plotted residual must be the difference of
         # those same real parts or it would not explain the curve above it.  The
-        # reported error metrics use the full complex difference, which is the honest
-        # figure -- a purely imaginary error is still an error.
+        # reported error metrics use the full complex difference -- a purely imaginary
+        # error would otherwise go uncounted.
         plotted_residual = np.real(produced) - np.real(analysis.raw)
         complex_error = np.abs(produced - analysis.raw)
         detail["amplitudes"] = {

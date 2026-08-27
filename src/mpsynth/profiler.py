@@ -69,7 +69,7 @@ class TradeoffProfile:
 
         The standard Mottonen/Shende-Bullock-Markov construction uses
         ``2**n - 2`` CNOTs for an ``n``-qubit real-amplitude state and twice that
-        with phases; ``2**n - 2`` is the honest lower-bound-flavoured baseline.
+        with phases; ``2**n - 2`` is a lower-bound estimate, not a tight count.
         """
         return 2**self.n_qubits - 2
 

@@ -64,7 +64,7 @@ the payload of a quantum option pricer. The bar is log-scaled on `1 - F`, so dim
 returns read straight off it: layers 7-8 buy less than one extra nine for 164 more CNOTs.
 
 **One dependency: numpy.** MPSynth's core is a singular value decomposition, so unlike a
-pure-stdlib tool there is no honest way around it. If numpy is missing but you have
+pure-stdlib tool there is no way around it. If numpy is missing but you have
 [`uv`](https://docs.astral.sh/uv/), `./mpsynth` re-runs itself through
 `uv run --with numpy` and you never notice; otherwise it tells you the one line to run.
 

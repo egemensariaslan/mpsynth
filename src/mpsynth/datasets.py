@@ -2,7 +2,7 @@
 
 These are chosen to span the compressibility spectrum: smooth analytic functions
 compress to tiny bond dimension, structured combinatorial states sit at bond 2
-exactly, and i.i.d. random noise is incompressible -- the honest worst case.
+exactly, and i.i.d. random noise is incompressible -- the worst case.
 """
 
 from __future__ import annotations

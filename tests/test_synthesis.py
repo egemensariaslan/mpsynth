@@ -147,7 +147,7 @@ def test_truncation_does_not_leak_unnormalised_states(rng):
     psi = result.circuit.statevector()
     assert np.linalg.norm(psi) == pytest.approx(1.0, abs=1e-12)
     # ... and the reported fidelity is measured against the true input, not the
-    # truncated stand-in, so it must be the (lower) honest number.
+    # truncated stand-in, so it must be the (lower) true number.
     assert result.fidelity <= 1.0
 
 

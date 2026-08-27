@@ -311,6 +311,14 @@ function wireCursor() {
 
 /* ── render ───────────────────────────────────────────────────────────── */
 
+function setExportText(text, format) {
+  $("export").querySelector("code").textContent = text;
+  const lines = text.split("\n");
+  $("export-lang").textContent = format;
+  $("export-lines").textContent = `${lines.length} line${lines.length === 1 ? "" : "s"}`;
+  $("export-gutter").textContent = lines.map((_, i) => i + 1).join("\n");
+}
+
 function ticker(text, state = "idle") {
   $("ticker").dataset.state = state;
   $("ticker-text").textContent = text;
@@ -376,7 +384,9 @@ function renderDetail(detail, summary) {
       `<td class="q">${check.name}<small>${check.detail}</small></td>` +
       `<td class="num">${check.residual === null ? "" : eng(check.residual)}</td>` +
       `<td class="num">${check.bound || ""}</td>` +
-      `<td class="verdict">${check.ok ? "ok" : "over"}</td>`;
+      `<td class="status ${check.ok ? "pass" : "fail"}">` +
+      `<span class="status-glyph">${check.ok ? "✓" : "!"}</span>` +
+      `${check.ok ? "within bound" : "exceeded"}</td>`;
     body.appendChild(tr);
   }
 
@@ -441,12 +451,12 @@ async function emit() {
     const cached = app.cache[app.layers]?.exports?.[format];
     if (cached) {
       app.exported = cached;
-      $("export").firstChild.textContent = cached.text;
+      setExportText(cached.text, format);
     }
     return;
   }
   app.exported = await api(`/api/export?layers=${app.layers}&format=${format}`);
-  $("export").firstChild.textContent = app.exported.text;
+  setExportText(app.exported.text, format);
 }
 
 async function run(event) {

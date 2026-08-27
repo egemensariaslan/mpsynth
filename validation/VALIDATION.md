@@ -43,8 +43,8 @@ across 300 random inputs and 1,068 total curve points, fidelity and CNOT count n
 decreased when a layer was added. Zero violations means picking any point on the curve
 is safe — there's no case where a *deeper* circuit is quietly worse.
 
-**D — CNOT reduction vs. Qiskit's own exact construction.** The honest baseline isn't
-"`2ⁿ` is a big number" — it's what a real, independently-implemented exact-preparation
+**D — CNOT reduction vs. Qiskit's own exact construction.** The baseline isn't
+"`2ⁿ` is a big number" — it's what an independently-implemented exact-preparation
 algorithm actually costs. `qiskit.circuit.library.StatePreparation` implements the
 Möttönen et al. construction; transpiled to the same `{rz, ry, cx}` basis MPSynth uses,
 it gives a real CNOT count to compare against. MPSynth at F ≥ 0.999 used **14.6× fewer
