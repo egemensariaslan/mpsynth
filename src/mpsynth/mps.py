@@ -60,7 +60,7 @@ class MPS:
         dims = self.bond_dimensions()
         return max(dims) if dims else 1
 
-    def copy(self) -> "MPS":
+    def copy(self) -> MPS:
         return MPS([t.copy() for t in self.tensors], self.center)
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
@@ -69,7 +69,7 @@ class MPS:
     # ------------------------------------------------------------ constructors
 
     @classmethod
-    def zero_state(cls, n_sites: int) -> "MPS":
+    def zero_state(cls, n_sites: int) -> MPS:
         """The computational basis state |0...0>."""
         t = np.zeros((1, 2, 1), dtype=complex)
         t[0, 0, 0] = 1.0
@@ -81,7 +81,7 @@ class MPS:
         psi: np.ndarray,
         chi_max: int | None = None,
         tol: float = 0.0,
-    ) -> tuple["MPS", float]:
+    ) -> tuple[MPS, float]:
         """Decompose a dense statevector by a left-to-right sweep of SVDs.
 
         Args:
@@ -186,12 +186,12 @@ class MPS:
 
     # ------------------------------------------------------------------- norms
 
-    def overlap(self, other: "MPS") -> complex:
+    def overlap(self, other: MPS) -> complex:
         """``<self|other>`` by transfer-matrix contraction."""
         if self.n_sites != other.n_sites:
             raise ValueError("overlap needs matching site counts")
         env = np.ones((1, 1), dtype=complex)
-        for a, b in zip(self.tensors, other.tensors):
+        for a, b in zip(self.tensors, other.tensors, strict=True):
             env = np.einsum("ab,asc,bsd->cd", env, a.conj(), b, optimize=True)
         return complex(env[0, 0])
 
@@ -215,7 +215,7 @@ class MPS:
         self.tensors[idx] = self.tensors[idx] / nrm
         return nrm
 
-    def fidelity(self, other: "MPS") -> float:
+    def fidelity(self, other: MPS) -> float:
         """``|<self|other>|^2`` for normalised states."""
         return float(abs(self.overlap(other)) ** 2)
 
@@ -265,9 +265,10 @@ class MPS:
         """Amplitude of one computational basis state, given qubit-0-first bits."""
         if len(bits) != self.n_sites:
             raise ValueError("bit string length must equal the number of sites")
+        values: list[int] = [int(b) for b in bits]
         vec = np.ones((1,), dtype=complex)
-        for t, s in zip(self.tensors, bits):
-            vec = vec @ t[:, int(s), :]
+        for tensor, bit in zip(self.tensors, values, strict=True):
+            vec = vec @ tensor[:, bit, :]
         return complex(vec[0])
 
     # ------------------------------------------------------------ gate actions

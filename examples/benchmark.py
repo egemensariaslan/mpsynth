@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import time
 
-
 from mpsynth import synthesize
 from mpsynth.datasets import generate
 

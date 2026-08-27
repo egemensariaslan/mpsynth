@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from conftest import random_state
+
 from mpsynth import MPS, profile, synthesize, synthesize_mps
 from mpsynth.datasets import GENERATORS, generate
 from mpsynth.synthesis import bond2_layer, prepare_vector
@@ -47,9 +47,7 @@ def test_bond2_layer_shapes(rng):
     for matrix, sites in layer:
         expected = 2 ** len(sites)
         assert matrix.shape == (expected, expected)
-        np.testing.assert_allclose(
-            matrix.conj().T @ matrix, np.eye(expected), atol=1e-10
-        )
+        np.testing.assert_allclose(matrix.conj().T @ matrix, np.eye(expected), atol=1e-10)
         if len(sites) == 2:
             assert sites[1] == sites[0] + 1, "staircase gates must be nearest-neighbour"
 
@@ -163,7 +161,9 @@ def test_zero_padding():
     assert result.padded_from == 5
     produced = result.amplitudes()
     assert produced.shape == (5,)
-    assert abs(np.vdot(vector / np.linalg.norm(vector), produced / np.linalg.norm(produced))) ** 2 == pytest.approx(1.0, abs=1e-9)
+    assert abs(
+        np.vdot(vector / np.linalg.norm(vector), produced / np.linalg.norm(produced))
+    ) ** 2 == pytest.approx(1.0, abs=1e-9)
 
 
 def test_padding_can_be_refused():
@@ -249,5 +249,5 @@ def test_cnot_count_grows_linearly_with_qubits():
         result = synthesize(np.exp(-(x**2) / 2.0), fidelity=0.99, max_layers=3)
         counts.append(result.circuit.cnot_count)
     # Doubling the register must not double the cost more than linearly.
-    ratios = [b / a for a, b in zip(counts, counts[1:])]
+    ratios = [b / a for a, b in zip(counts, counts[1:], strict=False)]
     assert all(r < 1.6 for r in ratios), counts

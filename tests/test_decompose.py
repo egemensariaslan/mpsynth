@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from conftest import random_unitary
+
 from mpsynth.decompose import (
     MAGIC,
     _ops_matrix,
@@ -18,7 +18,21 @@ from mpsynth.decompose import (
     kak_decomposition,
     two_qubit_ops,
 )
-from mpsynth.gates import CX01, H, I2, SWAP, X, Y, Z, rz, ry, rx, u_zyz, wrap_angle, zyz_decomposition
+from mpsynth.gates import (
+    CX01,
+    I2,
+    SWAP,
+    H,
+    X,
+    Y,
+    Z,
+    rx,
+    ry,
+    rz,
+    u_zyz,
+    wrap_angle,
+    zyz_decomposition,
+)
 
 kron = np.kron
 
@@ -128,9 +142,7 @@ def test_kak_factors_are_local_unitaries(rng):
     for _ in range(50):
         k = kak_decomposition(random_unitary(4, rng))
         for factor in (k.k1a, k.k1b, k.k2a, k.k2b):
-            np.testing.assert_allclose(
-                factor.conj().T @ factor, np.eye(2), atol=1e-9
-            )
+            np.testing.assert_allclose(factor.conj().T @ factor, np.eye(2), atol=1e-9)
 
 
 def test_kak_rejects_non_unitary_input():
@@ -151,9 +163,7 @@ def test_two_qubit_ops_reproduce_random_unitaries(rng):
 
 def test_two_qubit_ops_hit_the_optimal_cnot_count_for_known_classes(rng):
     a, b = random_unitary(2, rng), random_unitary(2, rng)
-    iswap = np.array(
-        [[1, 0, 0, 0], [0, 0, 1j, 0], [0, 1j, 0, 0], [0, 0, 0, 1]], dtype=complex
-    )
+    iswap = np.array([[1, 0, 0, 0], [0, 0, 1j, 0], [0, 1j, 0, 0], [0, 0, 0, 1]], dtype=complex)
     w, v = np.linalg.eigh(SWAP)
     sqrt_swap = (v * np.exp(0.5j * np.angle(w.astype(complex)))) @ v.conj().T
 
@@ -166,9 +176,7 @@ def test_two_qubit_ops_hit_the_optimal_cnot_count_for_known_classes(rng):
     for count, matrices in expected.items():
         for matrix in matrices:
             ops, phase = two_qubit_ops(matrix)
-            np.testing.assert_allclose(
-                np.exp(1j * phase) * _ops_matrix(ops), matrix, atol=1e-9
-            )
+            np.testing.assert_allclose(np.exp(1j * phase) * _ops_matrix(ops), matrix, atol=1e-9)
             assert n_cx(ops) == count
 
 
@@ -180,6 +188,4 @@ def test_two_qubit_ops_survive_nearly_degenerate_inputs(rng):
             perturbation = canonical_gate(*(scale * rng.normal(size=3)))
             u = local @ perturbation
             ops, phase = two_qubit_ops(u)
-            np.testing.assert_allclose(
-                np.exp(1j * phase) * _ops_matrix(ops), u, atol=1e-8
-            )
+            np.testing.assert_allclose(np.exp(1j * phase) * _ops_matrix(ops), u, atol=1e-8)

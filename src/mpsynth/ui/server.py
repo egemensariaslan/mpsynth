@@ -92,9 +92,7 @@ def build_handler(state: _State) -> type[BaseHTTPRequestHandler]:
             if not path.is_file() or STATIC.resolve() not in path.parents:
                 self._send(404, b"not found", "text/plain")
                 return
-            self._send(
-                200, path.read_bytes(), CONTENT_TYPES.get(path.suffix, "text/plain")
-            )
+            self._send(200, path.read_bytes(), CONTENT_TYPES.get(path.suffix, "text/plain"))
 
         # --------------------------------------------------------------- routes
 

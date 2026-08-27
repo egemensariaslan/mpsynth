@@ -82,7 +82,7 @@ class TradeoffProfile:
 
     def circuit_for(self, layers: int) -> Circuit:
         """The circuit corresponding to a given layer count."""
-        for point, circuit in zip(self.points, self.circuits):
+        for point, circuit in zip(self.points, self.circuits, strict=True):
             if point.layers == layers:
                 return circuit
         raise KeyError(f"no profiled circuit with {layers} layers")
@@ -182,8 +182,13 @@ class TradeoffProfile:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.2))
         ax1.plot(cnots, fids, "o-", color="#2b6cb0")
         for p in self.points:
-            ax1.annotate(f"L={p.layers}", (p.cnot, p.fidelity),
-                         textcoords="offset points", xytext=(4, -10), fontsize=8)
+            ax1.annotate(
+                f"L={p.layers}",
+                (p.cnot, p.fidelity),
+                textcoords="offset points",
+                xytext=(4, -10),
+                fontsize=8,
+            )
         ax1.set_xlabel("CNOT count")
         ax1.set_ylabel(r"fidelity  $|\langle\psi_{exact}|\psi_{approx}\rangle|^2$")
         ax1.grid(alpha=0.3)
@@ -263,9 +268,7 @@ def profile_mps(
     )
 
 
-def _fidelity_of(
-    circuit: Circuit, target: MPS, reference: np.ndarray | None, chi: int
-) -> float:
+def _fidelity_of(circuit: Circuit, target: MPS, reference: np.ndarray | None, chi: int) -> float:
     if reference is not None:
         return float(abs(np.vdot(reference, circuit.statevector())) ** 2)
     produced, _ = circuit.to_mps(chi_max=chi)

@@ -15,6 +15,9 @@ const app = {
   uploaded: null,
   exported: null,
   extensions: {},
+  formats: [],
+  offline: false,   // true inside a saved standalone report -- no server to call
+  cache: {},        // offline mode: layers -> { detail, exports: { format: {text,...} } }
 };
 
 /* ── helpers ──────────────────────────────────────────────────────────── */
@@ -210,15 +213,24 @@ function plotTradeoff(hostId, points, targetF, current, onPick) {
   c.root.appendChild(svg("path", { class: "trace", d: d(pts) }));
 
   points.forEach((p, i) => {
+    const label = `${p.layers} layer${p.layers === 1 ? "" : "s"}: ${p.cnot} CNOTs, depth ${p.depth}, fidelity ${p.fidelity.toFixed(6)}`;
     const node = svg("circle", {
       class: "node", cx: pts[i][0], cy: pts[i][1], r: 5,
       "data-meets": p.fidelity >= targetF ? 1 : 0,
       "data-current": p.layers === current ? 1 : 0,
+      tabindex: "0",
+      role: "button",
+      "aria-label": label,
+      "aria-pressed": p.layers === current ? "true" : "false",
     });
-    node.appendChild(
-      svg("title", {}, `${p.layers}L · ${p.cnot} cnot · depth ${p.depth} · F ${p.fidelity.toFixed(6)}`)
-    );
+    node.appendChild(svg("title", {}, label));
     node.addEventListener("click", () => onPick(p.layers));
+    node.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onPick(p.layers);
+      }
+    });
     c.root.appendChild(node);
     c.root.appendChild(
       svg("text", { class: "node-tag", x: pts[i][0], y: pts[i][1] - 11, "text-anchor": "middle" }, p.layers)
@@ -390,6 +402,20 @@ function target() {
 async function select(layers) {
   app.layers = layers;
   plotTradeoff("plot-tradeoff", app.summary.tradeoff, target(), layers, select);
+
+  if (app.offline) {
+    app.detail = app.cache[layers].detail;
+    renderDetail(app.detail, app.summary);
+    emit();
+    const over = app.detail.verification.checks.filter((c) => !c.ok).length;
+    ticker(
+      `${app.summary.meta.label} · ${layers} layer${layers === 1 ? "" : "s"} · offline report` +
+      (over ? ` · ${over} out of bound` : ""),
+      over ? "error" : "idle"
+    );
+    return;
+  }
+
   ticker(`simulating ${layers}-layer circuit`, "busy");
   app.detail = await api(`/api/detail?layers=${layers}`);
   renderDetail(app.detail, app.summary);
@@ -410,7 +436,16 @@ function cheapest() {
 
 async function emit() {
   if (app.layers === null) return;
-  app.exported = await api(`/api/export?layers=${app.layers}&format=${$("format").value}`);
+  const format = $("format").value;
+  if (app.offline) {
+    const cached = app.cache[app.layers]?.exports?.[format];
+    if (cached) {
+      app.exported = cached;
+      $("export").firstChild.textContent = cached.text;
+    }
+    return;
+  }
+  app.exported = await api(`/api/export?layers=${app.layers}&format=${format}`);
   $("export").firstChild.textContent = app.exported.text;
 }
 
@@ -446,7 +481,89 @@ function redraw() {
   if (app.detail) renderDetail(app.detail, app.summary);
 }
 
-async function init() {
+/* ── standalone report ───────────────────────────────────────────────── */
+
+/* Builds a single self-contained HTML file: every layer on the current curve is
+ * pre-fetched (detail + every export format) and embedded as JSON, so the saved
+ * file is fully interactive -- hover-to-probe, click-a-point, switch export
+ * format, toggle theme -- with no server and no network at all. This exists
+ * because the audience for a result is rarely the machine that computed it.
+ */
+async function saveReport() {
+  if (!app.summary || app.offline) return;
+  const button = $("report");
+  button.disabled = true;
+  try {
+    ticker("building standalone report (embedding every layer + export)…", "busy");
+    const cache = {};
+    for (const point of app.summary.tradeoff) {
+      const detail = await api(`/api/detail?layers=${point.layers}`);
+      const exports = {};
+      for (const format of app.formats) {
+        exports[format] = await api(`/api/export?layers=${point.layers}&format=${format}`);
+      }
+      cache[point.layers] = { detail, exports };
+    }
+
+    const [indexText, cssText, jsText] = await Promise.all([
+      fetch("/").then((r) => r.text()),
+      fetch("/app.css").then((r) => r.text()),
+      fetch("/app.js").then((r) => r.text()),
+    ]);
+    const bodyMatch = indexText.match(/<body>([\s\S]*)<\/body>/);
+    const bodyHtml = (bodyMatch ? bodyMatch[1] : indexText).replace(
+      /<script src="\/app\.js"><\/script>/, ""
+    );
+
+    const embedded = {
+      summary: app.summary,
+      cache,
+      extensions: app.extensions,
+      formats: app.formats,
+      defaultLayers: app.layers,
+      targetFidelity: target(),
+      generatedAt: new Date().toISOString(),
+    };
+
+    // Both jsText (this very function's own source contains the literal string
+    // "<\/script>", since it builds one) and the JSON blob could in principle
+    // contain "</script" as a substring. The HTML tokenizer ends a <script> block
+    // on sight of that sequence regardless of JS string/comment context, so it
+    // must be broken up wherever it appears inside anything placed inside a
+    // <script> element -- this is not optional escaping, the page fails to
+    // parse without it.
+    const escapeForScript = (text) => text.replace(/<\/script/gi, "<\\/script");
+    const dataJson = escapeForScript(JSON.stringify(embedded));
+    const safeJs = escapeForScript(jsText);
+    const safeCss = cssText.replace(/<\/style/gi, "<\\/style");
+
+    const theme = document.documentElement.dataset.theme || "dark";
+    const doc =
+      "<!doctype html>\n" +
+      `<html lang="en" data-theme="${theme}">\n<head>\n<meta charset="utf-8">\n` +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+      `<title>MPSynth report — ${app.summary.meta.label}</title>\n` +
+      `<style>${safeCss}</style>\n</head>\n<body class="offline">\n${bodyHtml}\n` +
+      `<script>window.MPSYNTH_DATA = ${dataJson};</script>\n` +
+      `<script>${safeJs}</script>\n</body>\n</html>\n`;
+
+    const blob = new Blob([doc], { type: "text/html" });
+    const anchor = document.createElement("a");
+    const slug = app.summary.meta.label.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+    anchor.href = URL.createObjectURL(blob);
+    anchor.download = `mpsynth-report-${slug || "run"}.html`;
+    anchor.click();
+    URL.revokeObjectURL(anchor.href);
+    ticker(`report saved — ${Object.keys(cache).length} layers embedded, ${(blob.size / 1024).toFixed(0)} KB`);
+  } catch (err) {
+    ticker(`report failed: ${err.message}`, "error");
+  }
+  button.disabled = false;
+}
+
+/* ── bootstrap ────────────────────────────────────────────────────────── */
+
+function wireTheme() {
   if (localStorage.getItem("mpsynth-theme") === "light") {
     document.documentElement.dataset.theme = "light";
   }
@@ -456,10 +573,58 @@ async function init() {
     localStorage.setItem("mpsynth-theme", root.dataset.theme);
     redraw();
   });
+}
+
+/** Inside a saved report: no server, so hydrate straight from embedded data. */
+async function initOffline() {
+  const data = window.MPSYNTH_DATA;
+  app.offline = true;
+  app.summary = data.summary;
+  app.cache = data.cache;
+  app.extensions = data.extensions;
+  app.formats = data.formats;
+  $("version").textContent = data.generatedAt ? `offline report · ${data.generatedAt.slice(0, 10)}` : "offline report";
+
+  for (const name of data.formats) {
+    const option = document.createElement("option");
+    option.value = option.textContent = name;
+    if (name === "qasm3") option.selected = true;
+    $("format").appendChild(option);
+  }
+  $("format").addEventListener("change", emit);
+  $("fidelity").value = data.targetFidelity ?? $("fidelity").value;
+  $("source").value = data.summary.meta.label;
+
+  $("workspace").hidden = false;
+  renderSummary(app.summary);
+  await select(data.defaultLayers);
+
+  $("copy").addEventListener("click", async () => {
+    await navigator.clipboard.writeText($("export").textContent);
+    ticker("copied to clipboard");
+  });
+  $("download").addEventListener("click", () => {
+    if (!app.exported) return;
+    const anchor = document.createElement("a");
+    anchor.href = URL.createObjectURL(new Blob([app.exported.text], { type: "text/plain" }));
+    anchor.download = "prepare" + (app.extensions[app.exported.format] || ".txt");
+    anchor.click();
+    URL.revokeObjectURL(anchor.href);
+  });
+
+  wireCursor();
+  wireTheme();
+  let timer;
+  window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(redraw, 140); });
+}
+
+async function initLive() {
+  wireTheme();
 
   const meta = await api("/api/datasets");
   $("version").textContent = meta.version;
   app.extensions = meta.extensions;
+  app.formats = meta.formats;
   for (const name of meta.datasets) {
     const option = document.createElement("option");
     option.value = `${name}:12`;
@@ -498,12 +663,30 @@ async function init() {
     anchor.click();
     URL.revokeObjectURL(anchor.href);
   });
+  $("report").addEventListener("click", saveReport);
+
+  // Ctrl/Cmd+Enter runs from anywhere, not just while a text field has focus.
+  window.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      run();
+    }
+  });
 
   wireCursor();
   let timer;
   window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(redraw, 140); });
 
   run();
+}
+
+function init() {
+  if (window.MPSYNTH_DATA) {
+    document.body.classList.add("offline");
+    initOffline();
+  } else {
+    initLive();
+  }
 }
 
 init();

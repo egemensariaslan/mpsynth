@@ -60,9 +60,7 @@ def bond2_layer(state: MPS, atol: float = 1e-8) -> Layer:
     why that makes every site tensor an isometry.
     """
     if state.max_bond() > 2:
-        raise ValueError(
-            f"bond2_layer needs bond dimension <= 2, got {state.max_bond()}"
-        )
+        raise ValueError(f"bond2_layer needs bond dimension <= 2, got {state.max_bond()}")
     state.canonicalize()
     state.normalize()
 
@@ -141,9 +139,7 @@ def _apply_layer_dagger(state: MPS, layer: Layer, chi_max: int | None, tol: floa
         if len(sites) == 1:
             state.apply_1q(matrix.conj().T, sites[0])
         else:
-            discarded += state.apply_2q(
-                matrix.conj().T, sites[0], chi_max=chi_max, tol=tol
-            )
+            discarded += state.apply_2q(matrix.conj().T, sites[0], chi_max=chi_max, tol=tol)
     return discarded
 
 
@@ -361,9 +357,7 @@ def synthesize_mps(
     return (result, layers) if collect_layers else result
 
 
-def _verify_fidelity(
-    circuit: Circuit, target: MPS, verify_chi: int | None
-) -> tuple[float, bool]:
+def _verify_fidelity(circuit: Circuit, target: MPS, verify_chi: int | None) -> tuple[float, bool]:
     """Fidelity of the circuit output against the target: exact when affordable."""
     n = target.n_sites
     if n <= DENSE_SIMULATION_LIMIT:

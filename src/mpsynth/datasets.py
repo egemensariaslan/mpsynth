@@ -51,7 +51,7 @@ def _ghz(n: int, rng: np.random.Generator) -> np.ndarray:
 
 
 def _product(n: int, rng: np.random.Generator) -> np.ndarray:
-    v = np.ones(1)
+    v: np.ndarray = np.ones(1)
     for _ in range(n):
         v = np.kron(v, rng.normal(size=2))
     return v
@@ -90,9 +90,7 @@ def generate(name: str, n_qubits: int, seed: int = 0) -> np.ndarray:
     try:
         fn = GENERATORS[name]
     except KeyError:
-        raise ValueError(
-            f"unknown dataset {name!r}; choose from {sorted(GENERATORS)}"
-        ) from None
+        raise ValueError(f"unknown dataset {name!r}; choose from {sorted(GENERATORS)}") from None
     if not 1 <= n_qubits <= 24:
         raise ValueError("n_qubits must be between 1 and 24")
     return np.asarray(fn(n_qubits, np.random.default_rng(seed)))

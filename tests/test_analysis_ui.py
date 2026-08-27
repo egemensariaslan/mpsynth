@@ -10,8 +10,8 @@ from http.server import ThreadingHTTPServer
 
 import numpy as np
 import pytest
-
 from conftest import random_state
+
 from mpsynth.analysis import MAX_PLOT_POINTS, analyze, layer_detail
 from mpsynth.datasets import generate
 from mpsynth.mps import MPS
@@ -172,11 +172,14 @@ def post(base, path, payload):
         return response.status, json.loads(response.read())
 
 
-@pytest.mark.parametrize("path,needle", [
-    ("/", b"MPSynth"),
-    ("/app.css", b"--cursor"),
-    ("/app.js", b"plotTradeoff"),
-])
+@pytest.mark.parametrize(
+    "path,needle",
+    [
+        ("/", b"MPSynth"),
+        ("/app.css", b"--cursor"),
+        ("/app.js", b"plotTradeoff"),
+    ],
+)
 def test_static_assets_are_served(server, path, needle):
     with urllib.request.urlopen(server + path) as response:
         assert response.status == 200
@@ -208,7 +211,7 @@ def test_analyze_then_detail_then_export(server):
 
 
 def test_uploaded_values_are_accepted(server):
-    values = list(np.exp(-np.linspace(-3, 3, 256) ** 2))
+    values = list(np.exp(-(np.linspace(-3, 3, 256) ** 2)))
     status, summary = post(
         server, "/api/analyze", {"values": values, "name": "mine.csv", "max_layers": 2}
     )
@@ -234,3 +237,39 @@ def test_unknown_route_is_404(server):
     with pytest.raises(urllib.error.HTTPError) as excinfo:
         get(server, "/api/nope")
     assert excinfo.value.code == 404
+
+
+@pytest.mark.filterwarnings("ignore::ResourceWarning")
+def test_every_curve_layer_has_detail_and_every_export_format(server):
+    """The standalone-report feature embeds detail + every export format for every
+    layer on the curve; if any layer or format ever raised, the report silently
+    would too (client-side, hard to notice). Guard it here instead.
+
+    Covers every layer at least once and every format at least once (round-robin)
+    rather than the full layers x formats cartesian product: the client-side
+    report builder itself is exercised end-to-end separately (see the UI), so this
+    is a defensive regression guard, not the only line of coverage, and does not
+    need to open dozens of fresh connections in a tight loop to do its job.
+    """
+    status, summary = post(server, "/api/analyze", {"source": "gaussian:8", "max_layers": 5})
+    assert status == 200
+    status, meta = get(server, "/api/datasets")
+    assert status == 200
+    formats = meta["formats"]
+
+    for i, point in enumerate(summary["tradeoff"]):
+        status, detail = get(server, f"/api/detail?layers={point['layers']}")
+        assert status == 200
+        assert detail["metrics"]["cnot"] == point["cnot"]
+        fmt = formats[i % len(formats)]
+        status, exported = get(server, f"/api/export?layers={point['layers']}&format={fmt}")
+        assert status == 200
+        assert exported["text"].strip()
+
+    # Confirm every format works too, just not against every layer.
+    for fmt in formats:
+        status, exported = get(
+            server, f"/api/export?layers={summary['tradeoff'][0]['layers']}&format={fmt}"
+        )
+        assert status == 200
+        assert exported["text"].strip()

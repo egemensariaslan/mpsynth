@@ -66,9 +66,7 @@ def to_qir(
             body.append(f"  call void @__quantum__qis__mz__body({_qubit(q)}, {_result(q)})")
         body.append("")
         for q in range(n):
-            body.append(
-                f"  call void @__quantum__rt__result_record_output({_result(q)}, i8* null)"
-            )
+            body.append(f"  call void @__quantum__rt__result_record_output({_result(q)}, i8* null)")
         n_results = n
 
     declarations = [

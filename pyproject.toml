@@ -22,7 +22,7 @@ dependencies = ["numpy>=1.24"]
 
 [project.optional-dependencies]
 plot = ["matplotlib>=3.7"]
-dev = ["pytest>=7.4", "scipy>=1.11", "matplotlib>=3.7"]
+dev = ["pytest>=7.4", "scipy>=1.11", "matplotlib>=3.7", "mypy>=1.10", "ruff>=0.6", "qiskit>=1.0", "qiskit-qasm3-import", "pennylane>=0.36"]
 
 [project.scripts]
 mpsynth = "mpsynth.cli:main"
@@ -33,6 +33,19 @@ Homepage = "https://github.com/mpsynth/mpsynth"
 [tool.hatch.build.targets.wheel]
 packages = ["src/mpsynth"]
 artifacts = ["src/mpsynth/ui/static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # long lines in math-heavy comments/docstrings are readability wins here
+
+[tool.mypy]
+python_version = "3.12"  # avoids choking on newer numpy stub syntax; source stays 3.10+ compatible
+warn_unused_ignores = true
+warn_redundant_casts = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

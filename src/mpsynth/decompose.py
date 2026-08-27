@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .gates import CX01, H, I2, S, SDG, Y, Z, rx, rz
+from .gates import CX01, I2, SDG, H, S, Y, Z, rx, rz
 from .linalg import is_product, split_product
 
 __all__ = [
@@ -66,11 +66,19 @@ class KakDecomposition:
 
     __slots__ = ("global_phase", "k1a", "k1b", "coefficients", "k2a", "k2b")
 
+    global_phase: float
+    k1a: np.ndarray
+    k1b: np.ndarray
+    coefficients: tuple[float, float, float]
+    k2a: np.ndarray
+    k2b: np.ndarray
+
     def __init__(self, global_phase, k1a, k1b, coefficients, k2a, k2b):
         self.global_phase = float(global_phase)
         self.k1a = k1a
         self.k1b = k1b
-        self.coefficients = tuple(float(x) for x in coefficients)
+        a, b, c = coefficients
+        self.coefficients = (float(a), float(b), float(c))
         self.k2a = k2a
         self.k2b = k2b
 
@@ -103,9 +111,7 @@ def _simultaneous_real_eigenvectors(g: np.ndarray, atol: float = 1e-8) -> np.nda
         off = off - np.diag(np.diag(off))
         if np.max(np.abs(off)) < atol:
             return p
-    raise np.linalg.LinAlgError(
-        "failed to simultaneously diagonalise the KAK Gram matrix"
-    )
+    raise np.linalg.LinAlgError("failed to simultaneously diagonalise the KAK Gram matrix")
 
 
 def _coefficients_from_phases(theta: np.ndarray) -> tuple[float, float, float]:
@@ -133,29 +139,23 @@ def _chamber_penalty(a, b, c):
 
 
 _PERMUTATIONS = [
-    (i, j, k, l)
+    (i, j, k, m)
     for i in range(4)
     for j in range(4)
     for k in range(4)
-    for l in range(4)
-    if len({i, j, k, l}) == 4
+    for m in range(4)
+    if len({i, j, k, m}) == 4
 ]
 #: Sign patterns with product +1.  A sign flip shifts that eigenphase by pi; flips must
 #: pair up so that det(A) stays +1 and K1 stays in SO(4).
 _EVEN_SIGNS = [
     s
-    for s in [
-        (a, b, c, d)
-        for a in (1, -1)
-        for b in (1, -1)
-        for c in (1, -1)
-        for d in (1, -1)
-    ]
+    for s in [(a, b, c, d) for a in (1, -1) for b in (1, -1) for c in (1, -1) for d in (1, -1)]
     if s[0] * s[1] * s[2] * s[3] == 1
 ]
 
-_PERM_INDEX = np.array(_PERMUTATIONS, dtype=int)                      # (24, 4)
-_SIGN_SHIFT = np.where(np.array(_EVEN_SIGNS) < 0, np.pi, 0.0)          # (8, 4)
+_PERM_INDEX = np.array(_PERMUTATIONS, dtype=int)  # (24, 4)
+_SIGN_SHIFT = np.where(np.array(_EVEN_SIGNS) < 0, np.pi, 0.0)  # (8, 4)
 _PERM_PARITY = np.array(
     [
         (-1) ** sum(1 for i in range(4) for j in range(i + 1, 4) if p[i] > p[j])
@@ -198,8 +198,8 @@ def kak_decomposition(u: np.ndarray, atol: float = 1e-8) -> KakDecomposition:
     # Only the branch index touches the global phase; K1 and K2 are the same for all.
     theta0 = np.angle(d0)
     theta = (
-        theta0[_PERM_INDEX][:, None, None, :]          # (24, 1, 1, 4) permutations
-        + _SIGN_SHIFT[None, :, None, :]                # ( 1, 8, 1, 4) pi shifts
+        theta0[_PERM_INDEX][:, None, None, :]  # (24, 1, 1, 4) permutations
+        + _SIGN_SHIFT[None, :, None, :]  # ( 1, 8, 1, 4) pi shifts
         - (_BRANCHES * (np.pi / 2))[None, None, :, None]  # (1, 1, 4, 1) phase branch
     )
     a = (theta[..., 0] + theta[..., 2]) / 2.0
@@ -306,9 +306,7 @@ def canonical_ops(a: float, b: float, c: float, atol: float = 1e-9) -> tuple[lis
     for ops, phase in candidates:
         if np.allclose(np.exp(1j * phase) * _ops_matrix(ops), target, rtol=0.0, atol=1e-9):
             return ops, phase
-    raise np.linalg.LinAlgError(
-        f"no canonical construction reproduced N({a}, {b}, {c})"
-    )
+    raise np.linalg.LinAlgError(f"no canonical construction reproduced N({a}, {b}, {c})")
 
 
 def _ops_matrix(ops: list[Op]) -> np.ndarray:
@@ -343,8 +341,6 @@ def two_qubit_ops(u: np.ndarray, atol: float = 1e-8) -> tuple[list[Op], float]:
     ops = [("1q", 0, kak.k2a), ("1q", 1, kak.k2b), *mid, ("1q", 0, kak.k1a), ("1q", 1, kak.k1b)]
     phase += kak.global_phase
 
-    if not np.allclose(
-        np.exp(1j * phase) * _ops_matrix(ops), u, rtol=0.0, atol=max(atol, 1e-8)
-    ):
+    if not np.allclose(np.exp(1j * phase) * _ops_matrix(ops), u, rtol=0.0, atol=max(atol, 1e-8)):
         raise np.linalg.LinAlgError("two-qubit decomposition failed verification")
     return ops, phase

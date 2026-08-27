@@ -50,7 +50,7 @@ class Gate:
             return ry(self.params[0])
         return CX01
 
-    def inverse(self) -> "Gate":
+    def inverse(self) -> Gate:
         if self.name == "cx":
             return self
         return replace(self, params=(-self.params[0],))
@@ -84,31 +84,31 @@ class Circuit:
             if not 0 <= q < self.n_qubits:
                 raise IndexError(f"qubit {q} out of range for {self.n_qubits} qubits")
 
-    def rz(self, theta: float, q: int) -> "Circuit":
+    def rz(self, theta: float, q: int) -> Circuit:
         self._check(q)
         self.gates.append(Gate("rz", (q,), (float(theta),)))
         return self
 
-    def ry(self, theta: float, q: int) -> "Circuit":
+    def ry(self, theta: float, q: int) -> Circuit:
         self._check(q)
         self.gates.append(Gate("ry", (q,), (float(theta),)))
         return self
 
-    def cx(self, control: int, target: int) -> "Circuit":
+    def cx(self, control: int, target: int) -> Circuit:
         self._check(control, target)
         if control == target:
             raise ValueError("cx needs distinct control and target")
         self.gates.append(Gate("cx", (control, target)))
         return self
 
-    def append_1q(self, matrix: np.ndarray, q: int, atol: float = 1e-12) -> "Circuit":
+    def append_1q(self, matrix: np.ndarray, q: int, atol: float = 1e-12) -> Circuit:
         """Append an arbitrary 2x2 unitary as an RZ-RY-RZ triple."""
         gates, phase = _zyz_gates(matrix, q, atol=atol)
         self.gates.extend(gates)
         self.global_phase += phase
         return self
 
-    def extend(self, other: "Circuit") -> "Circuit":
+    def extend(self, other: Circuit) -> Circuit:
         """Append ``other``'s gates (applied after this circuit's)."""
         if other.n_qubits != self.n_qubits:
             raise ValueError("cannot compose circuits over different qubit counts")
@@ -116,12 +116,10 @@ class Circuit:
         self.global_phase += other.global_phase
         return self
 
-    def copy(self) -> "Circuit":
-        return Circuit(
-            self.n_qubits, list(self.gates), self.global_phase, self.amplitude_order
-        )
+    def copy(self) -> Circuit:
+        return Circuit(self.n_qubits, list(self.gates), self.global_phase, self.amplitude_order)
 
-    def inverse(self) -> "Circuit":
+    def inverse(self) -> Circuit:
         return Circuit(
             self.n_qubits,
             [g.inverse() for g in reversed(self.gates)],
@@ -197,9 +195,7 @@ class Circuit:
             else:
                 c, t = g.qubits
                 op = g.matrix.reshape(2, 2, 2, 2)
-                psi = np.moveaxis(
-                    np.tensordot(op, psi, axes=([2, 3], [c, t])), [0, 1], [c, t]
-                )
+                psi = np.moveaxis(np.tensordot(op, psi, axes=([2, 3], [c, t])), [0, 1], [c, t])
         return np.exp(1j * self.global_phase) * psi.reshape(-1)
 
     def unitary(self, max_qubits: int = 12) -> np.ndarray:
@@ -218,9 +214,7 @@ class Circuit:
                 else:
                     c, t = g.qubits
                     op = g.matrix.reshape(2, 2, 2, 2)
-                    psi = np.moveaxis(
-                        np.tensordot(op, psi, axes=([2, 3], [c, t])), [0, 1], [c, t]
-                    )
+                    psi = np.moveaxis(np.tensordot(op, psi, axes=([2, 3], [c, t])), [0, 1], [c, t])
             out[:, j] = psi.reshape(-1)
         return np.exp(1j * self.global_phase) * out
 
@@ -236,9 +230,7 @@ class Circuit:
                 continue
             c, t = g.qubits
             if abs(c - t) != 1:
-                raise ValueError(
-                    f"MPS simulation needs nearest-neighbour gates, got cx {c},{t}"
-                )
+                raise ValueError(f"MPS simulation needs nearest-neighbour gates, got cx {c},{t}")
             site = min(c, t)
             mat = g.matrix if c < t else _swap_gate_qubits(g.matrix)
             discarded += state.apply_2q(mat, site, chi_max=chi_max, tol=tol)
@@ -246,7 +238,7 @@ class Circuit:
 
     # ------------------------------------------------------------ optimisation
 
-    def optimized(self, atol: float = 1e-12, drop_leading_phase: bool = True) -> "Circuit":
+    def optimized(self, atol: float = 1e-12, drop_leading_phase: bool = True) -> Circuit:
         """Fuse maximal single-qubit runs and drop no-op rotations.
 
         A fused run is only kept when it is no longer than the run it replaces, so
@@ -292,9 +284,7 @@ class Circuit:
         # Phases accumulate additively across hundreds of gates; fold the result back
         # into (-pi, pi].  exp(i phi) is unchanged, but the emitted number stays legible
         # and does not bleed precision into its low bits.
-        out.global_phase = float(
-            (out.global_phase + np.pi) % (2 * np.pi) - np.pi
-        )
+        out.global_phase = float((out.global_phase + np.pi) % (2 * np.pi) - np.pi)
         return out
 
 

@@ -13,8 +13,22 @@ from __future__ import annotations
 import numpy as np
 
 __all__ = [
-    "I2", "X", "Y", "Z", "H", "S", "SDG", "CX01", "CX10", "SWAP",
-    "rz", "ry", "rx", "u_zyz", "zyz_decomposition", "wrap_angle",
+    "I2",
+    "X",
+    "Y",
+    "Z",
+    "H",
+    "S",
+    "SDG",
+    "CX01",
+    "CX10",
+    "SWAP",
+    "rz",
+    "ry",
+    "rx",
+    "u_zyz",
+    "zyz_decomposition",
+    "wrap_angle",
 ]
 
 I2 = np.eye(2, dtype=complex)
@@ -25,22 +39,14 @@ H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
 S = np.array([[1, 0], [0, 1j]], dtype=complex)
 SDG = S.conj().T
 
-CX01 = np.array(
-    [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=complex
-)
-CX10 = np.array(
-    [[1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0]], dtype=complex
-)
-SWAP = np.array(
-    [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=complex
-)
+CX01 = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=complex)
+CX10 = np.array([[1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0]], dtype=complex)
+SWAP = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=complex)
 
 
 def rz(theta: float) -> np.ndarray:
     """``exp(-i theta Z / 2)``."""
-    return np.array(
-        [[np.exp(-0.5j * theta), 0.0], [0.0, np.exp(0.5j * theta)]], dtype=complex
-    )
+    return np.array([[np.exp(-0.5j * theta), 0.0], [0.0, np.exp(0.5j * theta)]], dtype=complex)
 
 
 def ry(theta: float) -> np.ndarray:
@@ -82,7 +88,7 @@ def zyz_decomposition(u: np.ndarray, atol: float = 1e-12) -> tuple[float, float,
     beta = float(2.0 * np.arctan2(sin_half, cos_half))
 
     if cos_half > 1e-9 and sin_half > 1e-9:
-        plus = float(np.angle(v[1, 1]))   # (alpha + gamma) / 2
+        plus = float(np.angle(v[1, 1]))  # (alpha + gamma) / 2
         minus = float(np.angle(v[1, 0]))  # (alpha - gamma) / 2
         alpha, gamma = plus + minus, plus - minus
     elif cos_half > 1e-9:  # beta == 0, only alpha + gamma matters

@@ -62,7 +62,9 @@ def truncated_svd(
     except np.linalg.LinAlgError:  # pragma: no cover - rare LAPACK non-convergence
         # Jitter and retry; gesdd occasionally fails on pathological inputs.
         noise = np.finfo(mat.dtype).eps * np.linalg.norm(mat)
-        u, s, vh = np.linalg.svd(mat + noise * np.eye(*mat.shape, dtype=mat.dtype), full_matrices=False)
+        u, s, vh = np.linalg.svd(
+            mat + noise * np.eye(*mat.shape, dtype=mat.dtype), full_matrices=False
+        )
 
     total = float(np.sum(s**2))
     if total <= 0.0:

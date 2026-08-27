@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from conftest import assert_equal_up_to_phase, random_unitary
+
 from mpsynth.circuit import Circuit, Gate
 from mpsynth.gates import CX01
 
@@ -50,9 +50,7 @@ def test_statevector_matches_unitary_first_column(rng):
     circuit = Circuit(3)
     circuit.ry(0.7, 0).cx(0, 1).rz(-1.1, 1).cx(2, 1).ry(0.3, 2)
     circuit.global_phase = 0.31
-    np.testing.assert_allclose(
-        circuit.statevector(), circuit.unitary()[:, 0], atol=1e-12
-    )
+    np.testing.assert_allclose(circuit.statevector(), circuit.unitary()[:, 0], atol=1e-12)
 
 
 def test_cx_matches_the_reference_matrix():
@@ -62,9 +60,7 @@ def test_cx_matches_the_reference_matrix():
 
     reversed_circuit = Circuit(2)
     reversed_circuit.cx(1, 0)
-    expected = np.array(
-        [[1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0]], dtype=complex
-    )
+    expected = np.array([[1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0]], dtype=complex)
     np.testing.assert_allclose(reversed_circuit.unitary(), expected, atol=1e-15)
 
 
@@ -105,9 +101,7 @@ def test_optimize_preserves_the_prepared_state(rng):
             else:
                 circuit.ry(float(rng.uniform(-4, 4)), int(rng.integers(0, 4)))
         optimized = circuit.optimized()
-        np.testing.assert_allclose(
-            optimized.statevector(), circuit.statevector(), atol=1e-11
-        )
+        np.testing.assert_allclose(optimized.statevector(), circuit.statevector(), atol=1e-11)
         assert len(optimized) <= len(circuit)
 
 

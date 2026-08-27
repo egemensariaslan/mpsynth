@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from conftest import random_state, random_unitary
+
 from mpsynth.gates import CX01, ry, rz
 from mpsynth.linalg import complete_to_unitary, truncated_svd
 from mpsynth.mps import MPS
@@ -78,8 +78,9 @@ def test_right_canonical_tensors_are_isometries(rng):
     for k, t in enumerate(mps.tensors):
         dl, _, dr = t.shape
         mat = t.reshape(dl, 2 * dr)
-        np.testing.assert_allclose(mat @ mat.conj().T, np.eye(dl), atol=1e-10,
-                                   err_msg=f"site {k} is not right-canonical")
+        np.testing.assert_allclose(
+            mat @ mat.conj().T, np.eye(dl), atol=1e-10, err_msg=f"site {k} is not right-canonical"
+        )
 
 
 def test_move_center_from_unknown_gauge(rng):

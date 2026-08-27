@@ -37,21 +37,24 @@ def to_qsharp(
         body.append(f"        R(PauliI, {_angle(-2.0 * circuit.global_phase)}, qs[0]);")
 
     n = circuit.n_qubits
-    return "\n".join(
-        [
-            *(f"// {line}" for line in header_lines(circuit)),
-            f"namespace {namespace} {{",
-            "",
-            "    open Microsoft.Quantum.Intrinsic;",
-            "    open Microsoft.Quantum.Diagnostics;",
-            "",
-            "    /// # Summary",
-            f"    /// Prepares the synthesised state on `qs`, which must hold {n}"
-            " qubits in the |0> state.",
-            f"    operation {operation}(qs : Qubit[]) : Unit is Adj + Ctl {{",
-            f'        Fact(Length(qs) == {n}, "expected {n} qubits");',
-            *body,
-            "    }",
-            "}",
-        ]
-    ) + "\n"
+    return (
+        "\n".join(
+            [
+                *(f"// {line}" for line in header_lines(circuit)),
+                f"namespace {namespace} {{",
+                "",
+                "    open Microsoft.Quantum.Intrinsic;",
+                "    open Microsoft.Quantum.Diagnostics;",
+                "",
+                "    /// # Summary",
+                f"    /// Prepares the synthesised state on `qs`, which must hold {n}"
+                " qubits in the |0> state.",
+                f"    operation {operation}(qs : Qubit[]) : Unit is Adj + Ctl {{",
+                f'        Fact(Length(qs) == {n}, "expected {n} qubits");',
+                *body,
+                "    }",
+                "}",
+            ]
+        )
+        + "\n"
+    )

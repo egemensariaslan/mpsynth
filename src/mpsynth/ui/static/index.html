@@ -35,15 +35,16 @@
         <option value="little">little</option>
       </select>
     </label>
-    <button id="upload-btn" type="button" class="ctl-btn">file…</button>
-    <input id="upload" type="file" accept=".csv,.txt,.dat,.json" hidden>
-    <button id="run" type="submit" class="ctl-btn go">run</button>
+    <button id="upload-btn" type="button" class="ctl-btn" aria-label="Upload a data file">file…</button>
+    <input id="upload" type="file" accept=".csv,.txt,.dat,.json" hidden aria-label="Data file">
+    <button id="run" type="submit" class="ctl-btn go" aria-keyshortcuts="Control+Enter">run</button>
+    <button id="report" type="button" class="ctl-btn" aria-label="Save a standalone report">report</button>
   </form>
 
-  <button id="theme" class="ctl-btn" aria-label="Invert">inv</button>
+  <button id="theme" type="button" class="ctl-btn" aria-label="Toggle light/dark theme">inv</button>
 </header>
 
-<div class="ticker" id="ticker" data-state="idle"><span id="ticker-text">ready</span></div>
+<div class="ticker" id="ticker" data-state="idle" role="status" aria-live="polite"><span id="ticker-text">ready</span></div>
 
 <main id="workspace" hidden>
 

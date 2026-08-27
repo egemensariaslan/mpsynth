@@ -10,6 +10,8 @@ by MPSynth describe every emitted artefact identically -- no target re-transpile
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from ..circuit import Circuit
 from .frameworks import build_pennylane, build_qiskit, to_pennylane, to_qiskit
 from .qasm import to_qasm2, to_qasm3
@@ -30,7 +32,7 @@ __all__ = [
     "build_qiskit",
 ]
 
-FORMATS = {
+FORMATS: dict[str, Callable[..., str]] = {
     "qasm2": to_qasm2,
     "qasm3": to_qasm3,
     "qir": to_qir,
@@ -73,7 +75,5 @@ def export(circuit: Circuit, fmt: str, **kwargs) -> str:
     try:
         emitter = FORMATS[key]
     except KeyError:
-        raise ValueError(
-            f"unknown export format {fmt!r}; choose from {sorted(FORMATS)}"
-        ) from None
+        raise ValueError(f"unknown export format {fmt!r}; choose from {sorted(FORMATS)}") from None
     return emitter(circuit, **kwargs)

@@ -23,9 +23,7 @@ def result():
 
 @pytest.fixture(scope="module")
 def little_endian_result():
-    return synthesize(
-        generate("damped", 5), fidelity=0.99, max_layers=4, qubit_order="little"
-    )
+    return synthesize(generate("damped", 5), fidelity=0.99, max_layers=4, qubit_order="little")
 
 
 # ---------------------------------------------------------------------- registry
@@ -88,8 +86,16 @@ def test_qasm_angles_keep_full_precision():
 
 
 def test_qasm2_and_qasm3_bodies_agree(result):
-    body2 = [ln for ln in export(result.circuit, "qasm2").splitlines() if ln and not ln.startswith(("//", "OPENQASM", "include", "qreg"))]
-    body3 = [ln for ln in export(result.circuit, "qasm3").splitlines() if ln and not ln.startswith(("//", "OPENQASM", "include", "qubit", "gphase"))]
+    body2 = [
+        ln
+        for ln in export(result.circuit, "qasm2").splitlines()
+        if ln and not ln.startswith(("//", "OPENQASM", "include", "qreg"))
+    ]
+    body3 = [
+        ln
+        for ln in export(result.circuit, "qasm3").splitlines()
+        if ln and not ln.startswith(("//", "OPENQASM", "include", "qubit", "gphase"))
+    ]
     assert body2 == body3
 
 
@@ -102,7 +108,9 @@ def test_qir_shape(result):
     assert "define void @main()" in text
     assert f'"required_num_qubits"="{result.n_qubits}"' in text
     assert '"entry_point"' in text
-    assert text.count("__quantum__qis__cnot__body") == result.circuit.cnot_count + 1  # + declaration
+    assert (
+        text.count("__quantum__qis__cnot__body") == result.circuit.cnot_count + 1
+    )  # + declaration
     assert "!llvm.module.flags" in text
 
 
@@ -208,7 +216,10 @@ def test_exported_qiskit_source_runs_and_matches(little_endian_result):
     from mpsynth.exporters import build_qiskit
 
     module = types.ModuleType("generated")
-    exec(compile(export(little_endian_result.circuit, "qiskit"), "generated.py", "exec"), module.__dict__)
+    exec(
+        compile(export(little_endian_result.circuit, "qiskit"), "generated.py", "exec"),
+        module.__dict__,
+    )
     np.testing.assert_allclose(
         np.asarray(Statevector(module.qc)),
         np.asarray(Statevector(build_qiskit(little_endian_result.circuit))),

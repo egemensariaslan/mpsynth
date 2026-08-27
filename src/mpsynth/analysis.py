@@ -34,8 +34,8 @@ class Analysis:
     """A completed analysis, cached so per-layer detail is cheap to fetch."""
 
     label: str
-    psi: np.ndarray          # normalised target, in synthesis (qubit_order) indexing
-    raw: np.ndarray          # the user's vector, normalised, original indexing
+    psi: np.ndarray  # normalised target, in synthesis (qubit_order) indexing
+    raw: np.ndarray  # the user's vector, normalised, original indexing
     target: MPS
     curve: TradeoffProfile
     n_qubits: int
@@ -78,9 +78,7 @@ class Analysis:
                 "entropy": [float(x) for x in entropy],
                 "max_entropy": max_entropy,
                 "bond_dims": [int(d) for d in self.target.bond_dimensions()],
-                "saturation": float(
-                    np.mean(entropy / np.maximum(np.array(max_entropy), 1e-12))
-                ),
+                "saturation": float(np.mean(entropy / np.maximum(np.array(max_entropy), 1e-12))),
             },
             "tradeoff": [p.as_dict() for p in self.curve.points],
             "baseline": {
@@ -106,9 +104,7 @@ def analyze(
     raw = np.asarray(vector, dtype=complex).reshape(-1)
     raw = raw / np.linalg.norm(raw)
 
-    curve = profile_mps(
-        target, max_layers=max_layers, residual_chi=residual_chi, tol=tol
-    )
+    curve = profile_mps(target, max_layers=max_layers, residual_chi=residual_chi, tol=tol)
     return Analysis(
         label=label,
         psi=psi,
@@ -226,7 +222,9 @@ def verify_circuit(circuit: Circuit, analysis: Analysis) -> dict:
         record(
             "|‖ψ‖ − 1|",
             "truncation loses norm; the emitted circuit must still be unitary",
-            abs(norm - 1.0), TOL, "< 10⁻⁹",
+            abs(norm - 1.0),
+            TOL,
+            "< 10⁻⁹",
         )
 
         fidelity = float(abs(np.vdot(analysis.target.to_statevector(), dense)) ** 2)
@@ -235,7 +233,9 @@ def verify_circuit(circuit: Circuit, analysis: Analysis) -> dict:
         record(
             "|F_reported − F_measured|",
             "fidelity recomputed from the emitted gate list alone",
-            abs(fidelity - reported), TOL, "< 10⁻⁹",
+            abs(fidelity - reported),
+            TOL,
+            "< 10⁻⁹",
         )
 
         # Cross-check against the tensor-network simulator: two different algorithms.
@@ -245,7 +245,9 @@ def verify_circuit(circuit: Circuit, analysis: Analysis) -> dict:
         record(
             "1 − |⟨dense|tensor⟩|²",
             "dense statevector against tensor-network contraction",
-            abs(agreement - 1.0), TOL, "< 10⁻⁹",
+            abs(agreement - 1.0),
+            TOL,
+            "< 10⁻⁹",
         )
 
     if circuit.n_qubits <= 10:
@@ -254,7 +256,9 @@ def verify_circuit(circuit: Circuit, analysis: Analysis) -> dict:
         record(
             "max |U†U − I|",
             "over the full 2ⁿ Hilbert space",
-            deviation, TOL, "< 10⁻⁹",
+            deviation,
+            TOL,
+            "< 10⁻⁹",
         )
 
     entropy = analysis.target.entanglement_entropy()
@@ -265,7 +269,9 @@ def verify_circuit(circuit: Circuit, analysis: Analysis) -> dict:
     record(
         "S̄ / S_max",
         "mean entanglement against the ceiling; above 0.7 no shallow circuit can help",
-        saturation, 0.7, "< 0.70",
+        saturation,
+        0.7,
+        "< 0.70",
     )
 
     return {

@@ -98,6 +98,16 @@ input, select {
   padding: 12px 0; min-width: 0; width: 100%;
 }
 input:focus, select:focus { outline: none; color: var(--signal); }
+
+/* A visible focus ring app-wide, including SVG elements made focusable via
+   tabindex (the trade-off nodes) -- outline:none above only softens the text
+   input case, it never removes this. */
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+.node:focus-visible { outline-offset: 3px; }
 select { cursor: pointer; }
 input[type="number"] { width: 4ch; }
 
@@ -333,3 +343,29 @@ h2 {
 }
 .code::-webkit-scrollbar { width: 8px; height: 8px; }
 .code::-webkit-scrollbar-thumb { background: var(--hair); }
+
+/* ── standalone report ────────────────────────────────────────────────── */
+
+/* A saved report has no server behind it: the run/upload/report affordances
+   would be broken promises, so they're removed rather than merely disabled. */
+body.offline #upload-btn,
+body.offline #upload,
+body.offline #run,
+body.offline #report {
+  display: none;
+}
+body.offline .ctl input,
+body.offline .ctl select {
+  pointer-events: none;
+  color: var(--ink-2);
+}
+body.offline .ident::after {
+  content: "offline report";
+  margin-left: 14px;
+  padding: 3px 8px;
+  border: 1px solid var(--hair);
+  font: 9.5px/1 var(--mono);
+  letter-spacing: .08em;
+  color: var(--ink-3);
+  align-self: center;
+}

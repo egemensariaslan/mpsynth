@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Test
+        run: pytest -q
+
+      - name: Launcher runs with nothing pre-installed (numpy-only smoke test)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          python -c "import sys; assert sys.path" # sanity
+          ./mpsynth examples/gaussian_1024.csv -L 2 -f 0.98
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system ruff mypy numpy
+      - run: ruff check src tests examples mpsynth
+      - run: ruff format --check src tests examples mpsynth
+      - name: mypy
+        run: mypy src/mpsynth --ignore-missing-imports
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Install the built wheel in a clean env and smoke-test it
+        run: |
+          uv venv /tmp/wheel-env
+          uv pip install --python /tmp/wheel-env/bin/python dist/*.whl
+          /tmp/wheel-env/bin/python -c "
+          from mpsynth import synthesize, export
+          r = synthesize([1.0, 2.0, 3.0, 4.0], fidelity=1.0)
+          assert r.fidelity > 0.999
+          assert 'OPENQASM' in export(r.circuit, 'qasm3')
+          print('wheel OK:', r.fidelity)
+          "
+
+  validate:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -e ".[dev]"
+      - name: Statistical validation suite
+        run: python validation/run_validation.py --trials 40 --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: validation/report.json

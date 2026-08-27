@@ -13,8 +13,8 @@ import pytest
 from mpsynth import profile, synthesize
 from mpsynth.cli import build_parser, load_vector, main
 from mpsynth.datasets import GENERATORS, generate
-from mpsynth.profiler import profile_mps
 from mpsynth.mps import MPS
+from mpsynth.profiler import profile_mps
 
 # ------------------------------------------------------------------- datasets
 
@@ -111,7 +111,9 @@ def test_plot(tmp_path, curve):
 
 
 def test_profile_mps_entry_point():
-    target, _ = MPS.from_statevector(generate("gaussian", 6) / np.linalg.norm(generate("gaussian", 6)))
+    target, _ = MPS.from_statevector(
+        generate("gaussian", 6) / np.linalg.norm(generate("gaussian", 6))
+    )
     curve = profile_mps(target, max_layers=3)
     assert len(curve.points) == 3
     assert curve.points[-1].fidelity > 0.99
@@ -245,8 +247,10 @@ def test_profile_exports_the_cheapest_qualifying_circuit(tmp_path, capsys):
 
 def test_profile_export_honours_the_format_flag(tmp_path, capsys):
     out = tmp_path / "prepare.qs"
-    assert main(["profile", "ghz:5", "-L", "2", "-f", "0.99", "-o", str(out),
-                 "--format", "qsharp"]) == 0
+    assert (
+        main(["profile", "ghz:5", "-L", "2", "-f", "0.99", "-o", str(out), "--format", "qsharp"])
+        == 0
+    )
     assert "namespace MPSynth {" in out.read_text()
 
 
@@ -316,7 +320,12 @@ def test_explicit_subcommands_still_win_over_the_default(capsys):
 def test_default_command_insertion():
     from mpsynth.cli import _insert_default_command
 
-    assert _insert_default_command(["data.npy", "-f", "0.9"]) == ["profile", "data.npy", "-f", "0.9"]
+    assert _insert_default_command(["data.npy", "-f", "0.9"]) == [
+        "profile",
+        "data.npy",
+        "-f",
+        "0.9",
+    ]
     assert _insert_default_command(["profile", "x"]) == ["profile", "x"]
     assert _insert_default_command(["synth", "x"]) == ["synth", "x"]
     assert _insert_default_command(["show"]) == ["show"]
@@ -347,7 +356,9 @@ def test_repo_launcher_is_executable_and_runs(tmp_path):
     out = tmp_path / "prepare.qasm"
     proc = subprocess.run(
         [sys.executable, str(launcher), "gaussian:8", "-L", "2", "-o", str(out)],
-        capture_output=True, text=True, cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
     )
     assert proc.returncode == 0, proc.stderr
     assert "cheapest circuit" in proc.stdout
@@ -360,7 +371,9 @@ def test_python_dash_m_entry_point(tmp_path):
     root = Path(__file__).resolve().parent.parent
     proc = subprocess.run(
         [sys.executable, "-m", "mpsynth", "show"],
-        capture_output=True, text=True, cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
         env={**os.environ, "PYTHONPATH": str(root / "src")},
     )
     assert proc.returncode == 0, proc.stderr

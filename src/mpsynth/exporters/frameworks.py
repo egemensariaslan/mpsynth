@@ -43,8 +43,11 @@ def to_pennylane(circuit: Circuit, function_name: str = "prepare_state") -> str:
 
     return "\n".join(
         [
-            '"""' + header_lines(circuit)[0] + '\n\n' +
-            "\n".join(header_lines(circuit)[1:]) + '\n"""',
+            '"""'
+            + header_lines(circuit)[0]
+            + "\n\n"
+            + "\n".join(header_lines(circuit)[1:])
+            + '\n"""',
             "",
             "import pennylane as qml",
             "",
@@ -105,8 +108,11 @@ def to_qiskit(circuit: Circuit, variable: str = "qc") -> str:
 
     return "\n".join(
         [
-            '"""' + header_lines(circuit)[0] + '\n\n' +
-            "\n".join(header_lines(circuit)[1:]) + '\n"""',
+            '"""'
+            + header_lines(circuit)[0]
+            + "\n\n"
+            + "\n".join(header_lines(circuit)[1:])
+            + '\n"""',
             "",
             "from qiskit import QuantumCircuit",
             "",

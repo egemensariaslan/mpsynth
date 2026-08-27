@@ -50,9 +50,7 @@ def load_vector(spec: str) -> tuple[np.ndarray, str]:
             data = archive[archive.files[0]]
     elif suffix == ".json":
         raw = json.loads(path.read_text())
-        data = np.asarray(
-            [complex(x["re"], x["im"]) if isinstance(x, dict) else x for x in raw]
-        )
+        data = np.asarray([complex(x["re"], x["im"]) if isinstance(x, dict) else x for x in raw])
     else:
         text = path.read_text()
         delimiter = "," if "," in text else None
@@ -70,24 +68,33 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
         help="path to .npy/.npz/.json/.csv/.txt, or a generator spec like 'gaussian:10'",
     )
     parser.add_argument(
-        "--chi", type=int, default=None,
+        "--chi",
+        type=int,
+        default=None,
         help="bond-dimension cap when decomposing the input (default: exact)",
     )
     parser.add_argument(
-        "--residual-chi", type=int, default=None,
+        "--residual-chi",
+        type=int,
+        default=None,
         help="bond-dimension cap for the disentangling residual",
     )
     parser.add_argument(
-        "--tol", type=float, default=0.0,
+        "--tol",
+        type=float,
+        default=0.0,
         help="relative discarded-weight budget per bond (default: 0)",
     )
     parser.add_argument(
-        "--qubit-order", choices=["big", "little"], default="big",
+        "--qubit-order",
+        choices=["big", "little"],
+        default="big",
         help="big: qubit 0 is the most significant index bit (OpenQASM reading); "
-             "little: Qiskit Statevector reading",
+        "little: Qiskit Statevector reading",
     )
     parser.add_argument(
-        "--no-optimize", action="store_true",
+        "--no-optimize",
+        action="store_true",
         help="skip single-qubit gate fusion",
     )
 
@@ -218,25 +225,47 @@ def build_parser() -> argparse.ArgumentParser:
 
     synth = sub.add_parser("synth", help="synthesise a circuit and export it")
     _add_common(synth)
-    synth.add_argument("-f", "--fidelity", type=float, default=0.98,
-                       help="target |<psi_exact|psi_approx>|^2 (default: 0.98)")
-    synth.add_argument("-L", "--max-layers", type=int, default=16,
-                       help="maximum entangling staircases (default: 16)")
-    synth.add_argument("--format", choices=sorted(FORMATS), default="qasm3",
-                       help="export target (default: qasm3)")
+    synth.add_argument(
+        "-f",
+        "--fidelity",
+        type=float,
+        default=0.98,
+        help="target |<psi_exact|psi_approx>|^2 (default: 0.98)",
+    )
+    synth.add_argument(
+        "-L",
+        "--max-layers",
+        type=int,
+        default=16,
+        help="maximum entangling staircases (default: 16)",
+    )
+    synth.add_argument(
+        "--format", choices=sorted(FORMATS), default="qasm3", help="export target (default: qasm3)"
+    )
     synth.add_argument("-o", "--output", help="write to a file instead of stdout")
     synth.set_defaults(func=cmd_synth)
 
     prof = sub.add_parser("profile", help="report the fidelity/depth trade-off curve")
     _add_common(prof)
-    prof.add_argument("-f", "--fidelity", type=float, default=0.98,
-                      help="fidelity target to highlight (default: 0.98)")
-    prof.add_argument("-L", "--max-layers", type=int, default=8,
-                      help="profile 1..L layers (default: 8)")
-    prof.add_argument("-o", "--output",
-                      help="also export the cheapest circuit that meets --fidelity")
-    prof.add_argument("--format", choices=sorted(FORMATS), default="qasm3",
-                      help="export target for --output (default: qasm3)")
+    prof.add_argument(
+        "-f",
+        "--fidelity",
+        type=float,
+        default=0.98,
+        help="fidelity target to highlight (default: 0.98)",
+    )
+    prof.add_argument(
+        "-L", "--max-layers", type=int, default=8, help="profile 1..L layers (default: 8)"
+    )
+    prof.add_argument(
+        "-o", "--output", help="also export the cheapest circuit that meets --fidelity"
+    )
+    prof.add_argument(
+        "--format",
+        choices=sorted(FORMATS),
+        default="qasm3",
+        help="export target for --output (default: qasm3)",
+    )
     prof.add_argument("--json", help="also write the curve as JSON")
     prof.add_argument("--plot", help="also write a PNG figure (needs matplotlib)")
     prof.add_argument("--markdown", action="store_true", help="emit a markdown table")
