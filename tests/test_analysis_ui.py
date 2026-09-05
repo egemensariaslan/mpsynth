@@ -157,8 +157,16 @@ def server():
     httpd.server_close()
 
 
+# Tests must never depend on the host's ambient proxy configuration: a system
+# HTTP proxy (VPN client, corporate MITM tool, another dev tool) can intercept
+# even 127.0.0.1 traffic and hang or misroute it. Build an opener that always
+# talks to the loopback server directly, regardless of environment/system proxy
+# settings.
+_DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def get(base, path):
-    with urllib.request.urlopen(base + path) as response:
+    with _DIRECT.open(base + path, timeout=10) as response:
         return response.status, json.loads(response.read())
 
 
@@ -168,7 +176,7 @@ def post(base, path, payload):
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request) as response:
+    with _DIRECT.open(request, timeout=10) as response:
         return response.status, json.loads(response.read())
 
 
