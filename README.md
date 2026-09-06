@@ -1,37 +1,205 @@
-# MPSynth
+![MPSynth — a dense exact-encoding circuit compresses into a shallow Matrix Product State staircase](docs/banner.svg)
 
-[![CI](https://github.com/YOUR-ORG/mpsynth/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR-ORG/mpsynth/actions/workflows/ci.yml)
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
-![mypy: strict](https://img.shields.io/badge/mypy-strict%2C%20zero%20errors-brightgreen)
-![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)
+<p>
+  <img src="https://img.shields.io/badge/CNOT%20reduction-14.6%C3%97%20mean-16181D?style=flat-square&labelColor=EFEDE6" alt="14.6x mean CNOT reduction">
+  <img src="https://img.shields.io/badge/scaling-R%C2%B2%200.982-16181D?style=flat-square&labelColor=EFEDE6" alt="R-squared 0.982 linear scaling">
+  <img src="https://img.shields.io/badge/tests-234-16181D?style=flat-square&labelColor=EFEDE6" alt="234 tests">
+  <img src="https://img.shields.io/badge/python-3.10%2B-16181D?style=flat-square&labelColor=EFEDE6" alt="Python 3.10+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-Apache%202.0-16181D?style=flat-square&labelColor=EFEDE6" alt="Apache 2.0 licence"></a>
+  <a href="https://github.com/egemensariaslan/mpsynth/actions/workflows/ci.yml"><img src="https://github.com/egemensariaslan/mpsynth/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
-**Shallow, approximate quantum state-preparation circuits from classical vectors, via Matrix Product States.**
+> **Built for the Microsoft AI/ML Summer Internship Programme, 2026.**
+> Capstone project by **Egemen Sarıaslan**, covering problem framing, research, implementation, evaluation and write-up. Carried out under the supervision of Microsoft Cloud Solution Architects Management.
+>
+> <sub>A capstone project produced during the programme. Not a Microsoft product, not affiliated with or endorsed by Microsoft Corporation; Microsoft and Azure are their trademarks.</sub>
 
-Loading an `N`-dimensional classical vector into an `n = log₂N` qubit register exactly
-(amplitude encoding) costs **O(2ⁿ)** gates. On current hardware and simulators that
-spends the entire coherence budget before any actual computation starts — the data is
-destroyed by noise on the way in.
+A synthesis engine that turns a classical data vector into a shallow quantum
+state-preparation circuit — one you actually choose the accuracy of, rather than one that
+demands exact fidelity and pays for it in gates you cannot afford.
 
-MPSynth compresses the vector into a Matrix Product State, truncates its bond dimension
-to a fidelity tolerance *you* choose, and synthesises the result as a stack of
-nearest-neighbour two-qubit staircases. Depth grows **linearly** in `n`, not
-exponentially.
+Loading an `N`-dimensional vector into an `n = log₂N`-qubit register exactly (amplitude
+encoding) costs **O(2ⁿ)** gates. On real hardware and on classical simulators alike, that
+consumes the entire coherence and compute budget before any actual computation begins —
+the input state decoheres on the way in. MPSynth compresses the vector into a Matrix
+Product State first, truncates its bond dimension to a fidelity tolerance *you* pick, and
+synthesises the result as a stack of nearest-neighbour two-qubit staircases. Depth grows
+**linearly** in `n`, not exponentially — measured, not asserted, in [§2](#2-results).
 
-```
-18 qubits (262,144 amplitudes), smooth input, fidelity 0.9999:
-   exact amplitude encoding   ~262,142 CNOTs
-   MPSynth, 4 layers               161 CNOTs      1,600x fewer
-```
+| | what could go wrong | is it checked? |
+|---|---|---|
+| **Decomposition** | truncation silently loses fidelity | **Yes.** Discarded weight is tracked and bounds `1 − F` exactly |
+| **Gate synthesis** | a wrong construction ships silently | **Yes.** Every KAK construction is verified against its target before being emitted |
+| **Export** | the emitted circuit doesn't match what was reported | **Yes.** Cross-checked against Qiskit's own `Statevector`, not just MPSynth's own simulator |
+| **The input itself** | the vector just doesn't compress | Reported, not hidden — [§5](#5-when-this-does-not-help) |
+
+![MPSynth pipeline: vector, MPS decomposition, disentangling loop, KAK gate synthesis, circuit IR, multi-framework export, verification](docs/architecture.svg)
 
 ---
 
-## Quick start
+## Table of contents
 
-Two commands. No install, no virtualenv, no `pip install -e .`:
+- [1. The problem](#1-the-problem)
+- [2. Results](#2-results)
+- [3. How it works](#3-how-it-works)
+- [4. Is the fidelity bound real?](#4-is-the-fidelity-bound-real)
+- [5. When this does not help](#5-when-this-does-not-help)
+- [6. Engineering](#6-engineering)
+- [7. Running it](#7-running-it)
+- [8. Repository layout](#8-repository-layout)
+- [9. Known limitations](#9-known-limitations)
+- [10. References](#10-references) · [Licence and citation](#licence-and-citation) · [Author](#author)
+
+---
+
+## 1. The problem
+
+Every quantum algorithm that starts from classical data — option pricing, quantum
+chemistry initial states, QML feature maps — needs that data loaded as amplitudes first.
+The textbook construction (Möttönen et al. 2005; Shende, Bullock & Markov 2006) is exact
+and needs `2ⁿ − 2` CNOTs. On an 18-qubit register that is 262,142 two-qubit gates before
+the algorithm the state was loaded *for* has run a single step. Near-term hardware and
+even noiseless classical simulators cannot absorb that.
+
+The fix used here is not new physics — sequential MPS disentangling was published by Ran
+in 2020 ([§10](#10-references)) — but a synthesis *engine* around it: exact bond-2
+staircases, an iterative disentangling loop for higher bond dimension, an exact
+Cartan (KAK) decomposition lowering every two-qubit gate to the minimum CX count its
+coordinates allow, and export to five frameworks from one shared gate set so a reported
+depth means the same thing everywhere it is emitted.
+
+---
+
+## 2. Results
+
+Every number below is regenerated by a committed script — `python examples/benchmark.py`
+for the cost table, `python validation/run_validation.py --trials 300` for the
+statistical suite. A fresh clone reproduces both with no external download, so nothing
+here can drift from what the code actually produced.
+
+### Cost at a fixed fidelity target
+
+10 qubits, fidelity target 0.99, exact-encoding baseline ~1,022 CNOTs:
+
+| input | kind | bond dim | layers | CNOT | 2q-depth | fidelity | vs. exact |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `product` | product state | 1 | 1 | **0** | 0 | 1.000000 | — |
+| `ghz` | GHZ state | 2 | 1 | 17 | 17 | 1.000000 | 60× |
+| `w` | W state | 2 | 1 | 21 | 21 | 1.000000 | 49× |
+| `damped` | damped oscillation | 2 | 1 | 23 | 23 | 1.000000 | 44× |
+| `gaussian` | smooth analytic | 11 | 1 | 24 | 24 | 0.998696 | 43× |
+| `lognormal` | skewed density | 9 | 1 | 24 | 24 | 0.997502 | 43× |
+| `lorentzian` | heavy shoulders | 12 | 1 | 24 | 24 | 0.999357 | 43× |
+| `heavytail` | power law | 9 | 1 | 24 | 24 | 0.999937 | 43× |
+| `bimodal` | two-peak density | 13 | 3 | 70 | 35 | 0.994648 | 15× |
+| `random` | i.i.d. noise | 32 | 12 | 242 | 79 | **0.330** | *target not reached* |
+
+The last row is not an oversight — see [§5](#5-when-this-does-not-help).
+
+### Scaling
+
+Smooth input, 4 layers — cost is essentially flat while the exact baseline doubles every
+qubit:
+
+| qubits | amplitudes | CNOT | 2q-depth | fidelity | exact CNOTs |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 10 | 1,024 | 89 | 39 | 0.999916 | 1,022 |
+| 12 | 4,096 | 113 | 45 | 0.999917 | 4,094 |
+| 14 | 16,384 | 134 | 51 | 0.999917 | 16,382 |
+| 16 | 65,536 | 149 | 57 | 0.999917 | 65,534 |
+| 18 | 262,144 | 161 | 63 | 0.999917 | 262,142 |
+
+Linear regression on this table: **R² = 0.982**, slope 9.8 CNOT/qubit.
+
+### Cross-validated against an independent implementation
+
+Six statistical checks, each run across hundreds of random trials rather than a single
+example. Two cross-check against **Qiskit's own code** — its `Statevector` simulator and
+its `StatePreparation` construction — rather than MPSynth checking its own arithmetic.
+
+| check | result |
+| --- | --- |
+| Fidelity reproducibility (300 trials, 11 dataset families) | max discrepancy **1.7×10⁻¹⁵** |
+| Cross-validated against Qiskit's `Statevector` (300 trials) | max discrepancy **2.4×10⁻¹⁵** |
+| Trade-off monotonicity (300 trials, 1,068 curve points) | **0 violations** |
+| CNOT reduction vs. Qiskit's own exact `StatePreparation` | **14.6× fewer** on average (95% CI ±6.7), min 2.9× |
+| Linear CNOT scaling (n = 8 to 18) | **R² = 0.982** |
+| Normalisation & unitarity under aggressive truncation | max error **3.3×10⁻¹⁵** |
+
+Full methodology and what each check does and does not establish:
+[`validation/VALIDATION.md`](validation/VALIDATION.md). Runs in CI on every push.
+
+---
+
+## 3. How it works
+
+One staircase of nearest-neighbour two-qubit gates prepares a bond-dimension-2 Matrix
+Product State *exactly*; stacking `L` such staircases, each disentangling what the last
+one left behind, recovers higher bond dimension at `O(L·n)` two-qubit gates instead of
+`O(2ⁿ)`. Every two-qubit gate is then lowered to `{RZ, RY, CX}` by an exact Cartan (KAK)
+decomposition using the minimum CX count its Weyl-chamber coordinates allow.
+
+Full derivation, the module map, the qubit-ordering convention (getting this wrong gives
+a bit-reversed state at a plausible-looking fidelity), and the trade-off profiler:
+**[`docs/01-technical-approach.md`](docs/01-technical-approach.md)**.
+
+---
+
+## 4. Is the fidelity bound real?
+
+`1 − F` is not measured after the fact and hoped for — it is bounded *before* synthesis
+runs. SVD truncation at each bond discards a known relative weight; the sum of discarded
+weights across every truncation is a provable upper bound on `1 − F`, checked directly in
+`tests/test_mps.py` (`1 − fidelity <= discarded_weight`, not merely "usually holds"). The
+reported fidelity itself is then re-measured from the *emitted circuit*, independently of
+the internal tensor-network state — [§2](#2-results)'s cross-validation is exactly this
+number, checked twice, by two different simulators.
+
+What is *not* claimed: the bound is on truncation error, not on how compressible an
+arbitrary input is. An incompressible input still returns an honest low fidelity — see
+next.
+
+---
+
+## 5. When this does not help
+
+**MPSynth compresses structure, and i.i.d. random noise has none.** A Haar-random vector
+has near-maximal entanglement across every cut, its MPS bond dimension is the full
+`2^{n/2}`, and no shallow circuit can reproduce it — that is information-theoretic, not an
+implementation gap. The `random` row in [§2](#2-results)'s table stalls around F ≈ 0.33,
+and the tool reports that rather than a flattering number. Real data — densities,
+signals, images, smooth functions, financial distributions — is the regime this is built
+for.
+
+---
+
+## 6. Engineering
+
+**234 tests**, covering the tensor-network core, both decompositions, every exporter
+(executed in the real frameworks, not pattern-matched), the CLI, and the local UI.
+
+**Every gate construction is re-derived, not trusted.** Each canonical-gate identity is
+proved numerically from the Bell-basis diagonalisation of `{XX, YY, ZZ}` and verified
+against its target *at synthesis time* before being emitted — a wrong circuit cannot
+leave the library silently. Optimal CX counts are verified against every known
+equivalence class: local gates 0, CX/CZ 1, iSWAP 2, SWAP and generic U(4) 3.
+
+**Type-checked.** A `mypy --strict`-adjacent configuration, zero errors across 20 source
+files, is a hard gate in CI rather than advisory.
+
+**Reproducible from a clone.** The committed example vectors (`examples/*.csv`) and the
+statistical validation suite need no external download; `python examples/benchmark.py`
+and `python validation/run_validation.py` regenerate every number in [§2](#2-results)
+offline.
+
+---
+
+## 7. Running it
+
+Needs nothing but a clone and Python 3.10+ — no install step:
 
 ```console
-git clone https://github.com/YOUR-ORG/mpsynth && cd mpsynth
-
+git clone https://github.com/egemensariaslan/mpsynth && cd mpsynth
 ./mpsynth examples/lognormal_4096.csv -f 0.999 -o prepare.qasm
 ```
 
@@ -42,31 +210,14 @@ layers   CNOT  depth  2q-depth   fidelity  infidelity  accuracy (full bar = 5 ni
 ----------------------------------------------------------------------------------------
      1     30    109        30   0.998335   1.665e-03  ##########........
      2     60    133        36   0.999494   5.057e-04  ############......  <-- meets target
-     3     89    151        41   0.999749   2.507e-04  #############.....  <-- meets target
-     4    118    176        48   0.999899   1.013e-04  ##############....  <-- meets target
-     5    144    195        54   0.999961   3.884e-05  ################..  <-- meets target
-     6    169    216        60   0.999971   2.882e-05  ################..  <-- meets target
-     7    197    237        66   0.999979   2.077e-05  #################.  <-- meets target
-     8    224    256        71   0.999984   1.584e-05  #################.  <-- meets target
-
-exact amplitude encoding baseline: ~4094 CNOTs (12 qubits, bond dimension 48)
-
+     ...
 cheapest circuit at fidelity >= 0.999: 2 layer(s), 60 CNOTs, 2q-depth 36 (68.2x fewer CNOTs than exact encoding)
 wrote prepare.qasm (qasm3, 2 layers, 60 CNOTs)
 ```
 
-That is the whole setup. `./mpsynth` works from any directory
-(`/path/to/mpsynth/mpsynth data.csv -o out.qasm`), and on Windows as
-`python mpsynth data.csv -o out.qasm`.
-
-**60 CNOTs instead of ~4094**, at 99.95% fidelity — a lognormal asset-price density,
-the payload of a quantum option pricer. The bar is log-scaled on `1 - F`, so diminishing
-returns read straight off it: layers 7-8 buy less than one extra nine for 164 more CNOTs.
-
-**One dependency: numpy.** MPSynth's core is a singular value decomposition, so unlike a
-pure-stdlib tool there is no way around it. If numpy is missing but you have
-[`uv`](https://docs.astral.sh/uv/), `./mpsynth` re-runs itself through
-`uv run --with numpy` and you never notice; otherwise it tells you the one line to run.
+`./mpsynth` re-runs itself through `uv run --with numpy` if numpy is missing — the SVD
+core has no stdlib-only fallback — and works identically as `python mpsynth ...` on
+Windows.
 
 ### The workbench
 
@@ -76,380 +227,145 @@ pure-stdlib tool there is no way around it. If numpy is missing but you have
 
 ![MPSynth workbench](docs/workbench.jpg)
 
-Three static files served by Python's own `http.server` — no Node, no CDN, no build.
-Plots are SVG paths; gridlines, gutters and cursor rules are CSS.
+A local, dependency-free UI — no Node, no CDN, no build step — showing *why* a vector
+compresses: entanglement entropy against its theoretical ceiling, the Schmidt spectrum
+being discarded, an interactive fidelity/cost curve, and a "report" button that saves the
+whole analysis as one self-contained HTML file with no server behind it. Full tour,
+including the CSS that runs the linked cursor and the read-them-back plot gutters:
+**[`docs/03-workbench.md`](docs/03-workbench.md)**.
 
-A trade-off table tells you what a circuit costs. This tells you **why**:
-
-| panel | reads |
-| --- | --- |
-| entanglement | `S(k)` per cut against the ceiling `min(k+1, n−k−1)` |
-| schmidt spectrum | singular values at the centre cut, log axis — the tail that gets discarded |
-| fidelity / cost | every layer count as a point; click one to synthesise and verify it |
-| amplitudes | target and prepared on one axis, signed residual below, linked cursor |
-| checks | measured quantity against its bound |
-
-Three things in the stylesheet do real work rather than decoration:
-
-- `--cursor` is one number on the strip container. Both crosshairs, and anything else
-  keyed to it, position themselves from it through `calc()`. One write, N rules.
-- `--n` is registered with `@property` as an `<integer>`, so it can be *transitioned*,
-  and `counter()` prints it — the readout counts up with no animation loop in JS.
-- `--pad-l`/`--pad-r` hold the plot gutters, and the SVG renderer reads them back out
-  of the cascade, so the CSS ruler and the drawn axis cannot disagree.
-
-#### Failure looks like failure
-
-Feed it `random:10`: entropy fills the ceiling (97%), the Schmidt spectrum flattens with
-no tail to discard, fidelity/cost goes horizontal at F ≈ 0.27, and `S̄ / S_max` reads
-`4.6×10⁻¹ / < 0.70` — out of bound. The circuit is still certified normalised and
-unitary; it is the *input* that cannot be compressed.
-
-![Incompressible input](docs/workbench-incompressible.jpg)
-
-#### Take it with you
-
-The "report" button embeds every layer on the curve — circuit, checks, every export
-format — into a single self-contained HTML file. No server, no network: hover-to-probe,
-click-a-point, switch export format and toggle theme all keep working when opened from
-disk or emailed to someone who has never seen MPSynth. This is the thing to hand to
-someone who wasn't in the room when you ran it.
-
-### More
-
-```console
-./mpsynth examples/gaussian_1024.csv          # smooth density, 10 qubits
-./mpsynth examples/chirp_1024.csv -L 6        # oscillatory signal -- deliberately harder
-./mpsynth gaussian:16                         # built-in generator, no data file
-./mpsynth random:10                           # an input that does NOT compress
-./mpsynth data.csv -o out.py --format qiskit  # qasm2 | qasm3 | qir | qsharp | pennylane | qiskit
-./mpsynth synth data.csv -f 0.99 -o out.qasm  # stop at the target instead of profiling
-./mpsynth ui                                  # interactive workbench
-./mpsynth show                                # datasets and export targets
-```
-
-Inputs may be `.csv`, `.txt`, `.npy`, `.npz`, `.json`, or a built-in generator spec such
-as `gaussian:12` (name : qubits [: seed]). Vectors are normalised and zero-padded to a
-power of two automatically. With no subcommand, `./mpsynth <input>` profiles the
-trade-off; `-o` also writes the cheapest circuit that meets `-f`.
+Every command, every export target, and the full Python library API:
+**[`docs/02-cli-reference.md`](docs/02-cli-reference.md)**.
 
 ---
 
-## Install (optional)
-
-Nothing here is required — `./mpsynth` in a clone is fully functional. Install only if
-you want `mpsynth` on your PATH without the clone path, or the library in your own code:
-
-```console
-uv tool install .           # or: pipx install .
-pip install -e ".[dev]"     # into an active virtualenv, + pytest/scipy/matplotlib
-```
-
-## Use it as a library
-
-```python
-import numpy as np
-from mpsynth import synthesize, export
-
-x = np.linspace(-4, 4, 1024)
-data = np.exp(-x**2 / 2)                      # any classical vector
-
-result = synthesize(data, fidelity=0.99)      # <- your tolerance, not ours
-print(result.report())
-
-open("prepare.qasm", "w").write(export(result.circuit, "qasm3"))
-```
+## 8. Repository layout
 
 ```
-qubits            10
-layers            1
-fidelity          0.998696
-infidelity        1.304e-03
-depth             84
-2-qubit depth     24
-CNOT count        24
-1-qubit gates     125
-total gates       149
-input bond dim    11
-```
+src/mpsynth/
+├── mps.py           MPS / tensor-train core: SVD, canonical forms, entanglement
+├── linalg.py        truncated SVD with an explicit discarded-weight budget
+├── decompose.py     KAK decomposition, canonical-gate circuits at 0/1/2/3 CX
+├── synthesis.py     bond-2 staircase and the iterative disentangler
+├── circuit.py       backend-independent {RZ, RY, CX} IR, metrics, simulation
+├── exporters/       OpenQASM 2/3, QIR, Q#, PennyLane, Qiskit
+├── profiler.py      fidelity-vs-depth trade-off curves
+├── analysis.py      entanglement spectra, verification, JSON payloads for the UI
+├── ui/              local workbench: stdlib HTTP server + hand-written HTML/CSS/SVG
+├── cli.py           synth / profile / show / ui subcommands
+└── datasets.py      built-in generator vectors for demos and benchmarks
 
-24 CNOTs instead of ~1022. Single-qubit gates are cheap and fast on real hardware;
-`cnot` and `two_qubit_depth` are the numbers that decide whether the state survives.
-
----
-
-## How it works
-
-Two facts carry the whole engine.
-
-**1. A bond-dimension-2 MPS can be prepared *exactly* by one staircase.**
-Put the state in right-canonical form. Each site tensor is then an isometry
-`ℂ^{D_left} → ℂ²_physical ⊗ ℂ^{D_right}`. Embed it in a two-qubit unitary that consumes
-the bond carried on qubit `k` plus a fresh `|0⟩` on qubit `k+1`, and emits the physical
-value on `k` and the next bond on `k+1`. Sweeping left to right costs `n-1` two-qubit
-gates and one single-qubit gate — depth **O(n)**.
-
-```
-q0 ──┤G₀├────────────────────
-     └┬─┘
-q1 ───┴──┤G₁├───────────────      each Gₖ consumes the bond on qubit k
-         └┬─┘                     and hands the next one to qubit k+1
-q2 ───────┴──┤G₂├───────────
-             └┬─┘
-q3 ───────────┴──────┤ V ├──
-```
-
-**2. Higher bond dimension is recovered by stacking staircases.**
-Approximate the target by its best bond-2 MPS, synthesise that exactly as `U₁`, apply
-`U₁†` to the target, and repeat on what is left. After `L` layers
-
-```
-|ψ⟩  ≈  U₁ U₂ … U_L |0…0⟩
-```
-
-and the residual `U_L†…U₁†|ψ⟩` converges to `|0…0⟩`. `L` is the knob you trade against
-fidelity. This is the disentangling scheme of Ran, *Phys. Rev. A* **101**, 032310 (2020).
-
-Each two-qubit gate is then lowered to `{RZ, RY, CX}` by an exact Cartan (KAK)
-decomposition, using the fewest CX gates its Weyl-chamber coordinates allow.
-
-### Modules
-
-| Module | Role |
-| --- | --- |
-| `mpsynth.mps` | MPS / tensor-train core: SVD decomposition, canonical forms, gate application |
-| `mpsynth.linalg` | Truncated SVD with an explicit discarded-weight budget; isometry completion |
-| `mpsynth.decompose` | KAK decomposition; canonical-gate circuits at 0/1/2/3 CX |
-| `mpsynth.synthesis` | Bond-2 staircase and the iterative disentangler |
-| `mpsynth.circuit` | Backend-independent IR, metrics, simulation, peephole optimiser |
-| `mpsynth.exporters` | OpenQASM 2/3, QIR, Q#, PennyLane, Qiskit |
-| `mpsynth.profiler` | Fidelity-vs-depth trade-off curves (text, markdown, JSON, PNG) |
-| `mpsynth.analysis` | Entanglement spectra, verification, JSON payloads for the UI |
-| `mpsynth.ui` | Local workbench: stdlib HTTP server + hand-written HTML/CSS/SVG |
-
----
-
-## The trade-off profiler
-
-One synthesis run produces every shallower circuit as a by-product, so the whole curve
-costs one pass.
-
-```bash
-$ ./mpsynth gaussian:10 -L 6 -f 0.999
-```
-
-```
-layers   CNOT  depth  2q-depth   fidelity  infidelity  accuracy (full bar = 5 nines)
-----------------------------------------------------------------------------------------
-     1     24     85        24   0.998696   1.304e-03  ##########........
-     2     46    102        29   0.999329   6.713e-04  ###########.......  <-- meets target
-     3     68    126        34   0.999841   1.587e-04  ##############....  <-- meets target
-     4     89    142        39   0.999916   8.363e-05  ###############...  <-- meets target
-     5    110    168        46   0.999952   4.781e-05  ################..  <-- meets target
-     6    130    187        51   0.999969   3.112e-05  ################..  <-- meets target
-
-exact amplitude encoding baseline: ~1022 CNOTs (10 qubits, bond dimension 11)
-
-cheapest circuit at fidelity >= 0.999: 2 layer(s), 46 CNOTs, 2q-depth 29 (22.2x fewer CNOTs than exact encoding)
-```
-
-Add `-o prepare.qasm` and it also writes the cheapest qualifying circuit, so profiling
-and synthesis are a single command.
-
-```python
-from mpsynth import profile
-curve = profile(data, max_layers=8)
-best = curve.best_for(0.999)          # shallowest circuit meeting the target
-circuit = curve.circuit_for(best.layers)
-curve.plot("tradeoff.png")            # needs matplotlib
-print(curve.to_markdown(), curve.to_json())
+examples/            committed sample vectors + benchmark and quickstart scripts
+validation/          statistical validation suite + methodology (VALIDATION.md)
+docs/                technical approach, CLI reference, workbench tour, diagrams
+tests/               234 tests
+mpsynth              zero-install repo-root launcher
 ```
 
 ---
 
-## Measured results
+## 9. Known limitations
 
-`python examples/benchmark.py`. **10 qubits, fidelity target 0.99**, baseline ~1022 CNOTs:
+Listed here rather than left for a reviewer to find.
 
-| input | kind | bond dim | layers | CNOT | 2q-depth | fidelity | vs exact |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `product` | product state | 1 | 1 | **0** | 0 | 1.000000 | — |
-| `ghz` | GHZ state | 2 | 1 | 17 | 17 | 1.000000 | 60x |
-| `w` | W state | 2 | 1 | 21 | 21 | 1.000000 | 49x |
-| `damped` | damped oscillation | 2 | 1 | 23 | 23 | 1.000000 | 44x |
-| `gaussian` | smooth analytic | 11 | 1 | 24 | 24 | 0.998696 | 43x |
-| `lognormal` | skewed density | 9 | 1 | 24 | 24 | 0.997502 | 43x |
-| `lorentzian` | heavy shoulders | 12 | 1 | 24 | 24 | 0.999357 | 43x |
-| `heavytail` | power law | 9 | 1 | 24 | 24 | 0.999937 | 43x |
-| `bimodal` | two-peak density | 13 | 3 | 70 | 35 | 0.994648 | 15x |
-| `random` | i.i.d. noise | 32 | 12 | 242 | 79 | **0.330** | *target not reached* |
-
-**Scaling** on a smooth input, 4 layers — cost is essentially flat while the exact
-baseline doubles every qubit:
-
-| qubits | amplitudes | CNOT | 2q-depth | fidelity | exact CNOTs | time |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10 | 1,024 | 89 | 39 | 0.999916 | 1,022 | 0.04s |
-| 12 | 4,096 | 113 | 45 | 0.999917 | 4,094 | 0.06s |
-| 14 | 16,384 | 134 | 51 | 0.999917 | 16,382 | 0.10s |
-| 16 | 65,536 | 149 | 57 | 0.999917 | 65,534 | 0.21s |
-| 18 | 262,144 | 161 | 63 | 0.999917 | 262,142 | 0.69s |
-
-### When this does *not* help
-
-**MPSynth compresses structure, and i.i.d. random noise has none.** A Haar-random
-vector has near-maximal entanglement across every cut, its MPS bond dimension is the
-full `2^{n/2}`, and no shallow circuit can reproduce it — that is information-theoretic,
-not a limitation of the implementation. In the table above the random inputs stall
-around F ≈ 0.33 and the tool says so rather than quietly reporting a good-looking
-number. Real data — densities, signals, images, smooth functions, financial
-distributions — is the regime this is built for.
+- **Incompressible inputs cost real CNOTs.** [§5](#5-when-this-does-not-help) is not a
+  caveat in fine print — it is the honest boundary of what this technique can do.
+- **The CNOT-reduction cross-validation excludes one dataset.** Qiskit's own
+  `StatePreparation` raises `ValueError: Input matrix is not unitary` internally on
+  certain smooth, symmetric real inputs at n=10 (observed on Qiskit 2.5.2) — a numerical
+  edge case in the baseline being compared against, reported as a skip rather than hidden
+  or silently retried. See `validation/VALIDATION.md`.
+- **`chi_max` on the *input* trades honesty for speed.** Leaving it `None` (the default)
+  keeps the input decomposition exact, so the reported fidelity is measured against your
+  true data. Setting it caps the input's own bond dimension before synthesis even starts
+  — faster, but now the fidelity is against a pre-truncated stand-in, and the result says
+  so (`fidelity_exact` on the analysis payload).
+- **Global phase is unobservable in OpenQASM 2.0.** It is recorded as a comment there;
+  use OpenQASM 3 or Q# if the circuit will be used as a controlled subroutine, where
+  phase is observable.
+- **Dense simulation is capped at 26 qubits** (`Circuit.statevector`) and 12 qubits for
+  building a full unitary — both refuse cleanly rather than hang; the MPS-backed
+  simulator (`Circuit.to_mps`) has no such ceiling.
 
 ---
 
-## Correctness
+## 10. References
 
-Approximation is the *point* of this tool, so everything that is not the approximation
-is held to machine precision. 234 tests, `pytest -q`, plus a separate statistical
-validation suite (below) that checks claims across hundreds of trials instead of one
-example.
+Work this project builds on directly.
 
-- **The gate decompositions are re-derived, not trusted.** Every canonical-gate identity
-  is proved numerically in `tests/test_decompose.py` from the Bell-basis diagonalisation
-  of `{XX, YY, ZZ}`, and each construction is verified against its target *at synthesis
-  time* before being emitted — a wrong circuit cannot leave the library silently.
-- **Optimal CX counts.** Verified against every known equivalence class: local gates 0,
-  CX/CZ 1, iSWAP 2, SWAP and generic U(4) 3.
-- **Unitarity and normalisation.** SVD truncation loses norm; every truncation is
-  followed by renormalisation, and tests assert `⟨ψ|ψ⟩ = 1` to 1e-12 and `U†U = I` on the
-  emitted circuit — including under aggressive truncation.
-- **Exports are executed, not just pattern-matched.** The Qiskit and PennyLane artefacts
-  are run in the real frameworks and their statevectors compared against MPSynth's own
-  simulation; OpenQASM 2/3 are reloaded through Qiskit's parsers.
-- **The reported fidelity is reproducible from the emitted circuit alone**, and is
-  measured against the *true* input vector rather than the truncated MPS stand-in.
-- **Type-checked.** `mypy --strict`-adjacent config, zero errors across 20 source files
-  — not advisory, a hard gate in CI.
+**The disentangling scheme**
 
-```bash
-pytest -q          # 234 passed
-```
+1. Ran, S.-J. (2020). *Encoding of matrix product states into quantum circuits of
+   one- and two-qubit gates.* Physical Review A, 101, 032310.
+   [arXiv:1908.07958](https://arxiv.org/abs/1908.07958) — the sequential MPS
+   disentangling scheme this engine implements and stacks into layers.
 
----
+**Exact amplitude encoding baselines**
 
-## Statistical validation
+2. Möttönen, M., Vartiainen, J. J., Bergholm, V. & Salomaa, M. M. (2005). *Transformation
+   of quantum states using uniformly controlled rotations.* Quantum Information &
+   Computation, 5, 467. [arXiv:quant-ph/0407010](https://arxiv.org/abs/quant-ph/0407010)
+   (submitted 2004) — the exact construction MPSynth is measured against throughout
+   [§2](#2-results).
+3. Shende, V. V., Bullock, S. S. & Markov, I. L. (2006). *Synthesis of quantum-logic
+   circuits.* IEEE Transactions on CAD, 25(6), 1000–1010.
+   [arXiv:quant-ph/0406176](https://arxiv.org/abs/quant-ph/0406176) — the other standard
+   exact-synthesis construction for the same problem.
 
-Unit tests check individual behaviors against fixed expectations. This is different:
-six claims, each run across hundreds of random trials with confidence intervals, two of
-them cross-checked against **Qiskit's own code** — its `Statevector` simulator and its
-`StatePreparation` construction — rather than MPSynth checking its own arithmetic.
+**Two-qubit gate synthesis**
 
-```bash
-python validation/run_validation.py --trials 300
-```
+4. Vatan, F. & Williams, C. (2004). *Optimal quantum circuits for general two-qubit
+   gates.* Physical Review A, 69, 032315. [arXiv:quant-ph/0308006](https://arxiv.org/abs/quant-ph/0308006)
+   — the Cartan (KAK) decomposition and the 0/1/2/3-CX classification this project's
+   `mpsynth.decompose` implements and verifies numerically.
+5. Kraus, B. & Cirac, J. I. (2001). *Optimal creation of entanglement using a two-qubit
+   gate.* Physical Review A, 63, 062309. [arXiv:quant-ph/0011050](https://arxiv.org/abs/quant-ph/0011050)
+   — the Weyl-chamber / magic-basis structure underlying the canonical-gate
+   constructions.
 
-| check | result |
-| --- | --- |
-| Fidelity reproducibility (300 trials, 11 dataset families) | max discrepancy **1.7×10⁻¹⁵** |
-| Cross-validated against Qiskit's `Statevector` (300 trials) | max discrepancy **2.4×10⁻¹⁵** |
-| Trade-off monotonicity (300 trials, 1,068 curve points) | **0 violations** |
-| CNOT reduction vs. Qiskit's own exact `StatePreparation` | **14.6× fewer** on average (95% CI ±6.7), min 2.9× |
-| Linear CNOT scaling (n = 8 to 18) | **R² = 0.982** |
-| Normalization & unitarity under aggressive truncation | max error **3.3×10⁻¹⁵** |
+**Tensor networks**
 
-Full methodology, what each check actually establishes, and what it deliberately does
-*not* claim: **[`validation/VALIDATION.md`](validation/VALIDATION.md)**. Runs in CI on
-every push; the JSON report is uploaded as a build artifact.
+6. Vidal, G. (2003). *Efficient classical simulation of slightly entangled quantum
+   computations.* Physical Review Letters, 91, 147902.
+   [arXiv:quant-ph/0301063](https://arxiv.org/abs/quant-ph/0301063) — the entanglement/
+   bond-dimension relationship this project's compressibility argument rests on.
+7. Schollwöck, U. (2011). *The density-matrix renormalization group in the age of matrix
+   product states.* Annals of Physics, 326(1), 96–192.
+   [arXiv:1008.3477](https://arxiv.org/abs/1008.3477) — the canonical-form and
+   truncated-SVD conventions `mpsynth.mps` follows.
 
----
+**Frameworks targeted by the exporters**
 
-## Qubit ordering — read this once
-
-Frameworks disagree about which end of a basis label qubit 0 lives on. Getting it wrong
-gives you a bit-reversed state at a plausible-looking fidelity, which is the easiest way
-to misuse a state-preparation tool. So MPSynth makes it explicit:
-
-| `qubit_order` | qubit 0 is | verified against |
-| --- | --- | --- |
-| `"big"` (default) | the **most** significant index bit | PennyLane `qml.state()`, textbook/OpenQASM reading |
-| `"little"` | the **least** significant index bit | Qiskit `Statevector`, Aer |
-
-```python
-result = synthesize(data, qubit_order="little")   # now Statevector(qc) == your data
-```
-
-Every exported artefact stamps its convention into its own header comment. And
-`result.amplitudes()` always returns the prepared state re-indexed to line up
-element-for-element with the vector you passed in — padding and ordering undone,
-original norm restored:
-
-```python
-np.allclose(result.amplitudes(), data, atol=1e-3)
-```
+8. Qiskit contributors. *Qiskit: An Open-source Framework for Quantum Computing.*
+   [qiskit.org](https://www.ibm.com/quantum/qiskit) — the cross-validation baseline in
+   [§2](#2-results), and one of five export targets.
+9. Bergholm, V. et al. (2018). *PennyLane: Automatic differentiation of hybrid
+   quantum-classical computations.* [arXiv:1811.04968](https://arxiv.org/abs/1811.04968)
+   — a second export target, used for the big-endian amplitude-order verification.
+10. Svore, K. et al. (2018). *Q# enabling scalable quantum computing and development
+    with a high-level DSL.* [arXiv:1803.00652](https://arxiv.org/abs/1803.00652) — a
+    third export target, and the source of the QIR base-profile export format.
 
 ---
 
-## Export targets
+## Licence and citation
 
-```python
-export(result.circuit, "qasm2")      # OpenQASM 2.0     .qasm
-export(result.circuit, "qasm3")      # OpenQASM 3.0     .qasm   (carries global phase)
-export(result.circuit, "qir")        # QIR / LLVM IR    .ll     (base profile)
-export(result.circuit, "qsharp")     # Q#               .qs
-export(result.circuit, "pennylane")  # PennyLane        .py
-export(result.circuit, "qiskit")     # Qiskit           .py
-```
+Everything — source, tests, docs and the example vectors — is under the **Apache
+License 2.0** ([LICENSE](LICENSE)). Permissive, OSI-approved, with an express patent
+grant. Third-party dependency terms are set out in [NOTICE](NOTICE).
 
-Everything is synthesised into one small gate set — `RZ`, `RY`, `CX` plus a tracked
-global phase — so no exporter re-transpiles and the reported depth and gate counts
-describe every emitted artefact identically. Live objects are available too, importing
-the framework lazily:
+GitHub renders a *Cite this repository* button from [CITATION.cff](CITATION.cff).
 
-```python
-from mpsynth.exporters import build_qiskit, build_pennylane
-qc = build_qiskit(result.circuit)
-```
+> Sarıaslan, E. (2026). *MPSynth: Shallow Approximate Quantum State Preparation from
+> Matrix Product States* (Version 0.1.0) [Computer software].
 
-Notes on fidelity of the artefacts themselves: OpenQASM 2.0 has no global-phase
-instruction, so the phase is recorded as a comment (unobservable for state preparation,
-but it matters if you use the circuit as a *controlled* subroutine — use OpenQASM 3 or
-Q# there). QIR angles are emitted as LLVM hex-float literals so nothing is lost to
-decimal rounding.
+If you cite a specific number, please say which one — the CNOT-reduction figures are
+measured against Qiskit's own exact construction on eight named datasets ([§2](#2-results)),
+not a universal constant.
 
----
+## Author
 
-## API
+**Egemen Sarıaslan** — Microsoft AI/ML Summer Internship Programme, 2026,
+supervised by Cloud Solution Architects Management.
 
-```python
-synthesize(vector, fidelity=0.98, max_layers=16, chi_max=None,
-           residual_chi=None, tol=0.0, pad=True,
-           qubit_order="big", optimize=True) -> SynthesisResult
-```
-
-| argument | meaning |
-| --- | --- |
-| `fidelity` | target `\|⟨ψ_exact\|ψ_approx⟩\|²`; synthesis stops once it is reached |
-| `max_layers` | cap on entangling staircases; each costs about `n-1` two-qubit gates |
-| `chi_max` | bond cap when decomposing the *input*. `None` keeps it exact, so the reported fidelity is measured against your true data |
-| `residual_chi` | bond cap for the disentangling residual |
-| `tol` | relative discarded-weight budget per bond |
-| `optimize` | fuse single-qubit runs (never increases the gate count) |
-
-`SynthesisResult` carries `.circuit`, `.fidelity`, `.layers`, `.report()`,
-`.metrics()`, `.amplitudes()`, `.reached_target`, `.input_bond_dimension`.
-
-Already have a tensor network? Skip the dense vector entirely — `synthesize_mps(mps, ...)`
-and `profile_mps(mps, ...)` take an `MPS` directly, so nothing ever materialises `2ⁿ`
-amplitudes.
-
----
-
-## Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) — setup, the checks every PR runs through in
-CI, and the specific correctness bar this codebase holds itself to. Release history in
-[`CHANGELOG.md`](CHANGELOG.md).
-
-## License
-
-Apache-2.0.
+Questions about the synthesis engine or the verification approach are welcome as issues.

@@ -9,7 +9,7 @@ description = "Shallow approximate quantum state-preparation circuits from Matri
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "MPSynth contributors" }]
+authors = [{ name = "Egemen Sarıaslan" }]
 keywords = ["quantum", "state-preparation", "matrix-product-state", "tensor-network", "qasm", "qir"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -28,7 +28,7 @@ dev = ["pytest>=7.4", "scipy>=1.11", "matplotlib>=3.7", "mypy>=1.10", "ruff>=0.6
 mpsynth = "mpsynth.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mpsynth/mpsynth"
+Homepage = "https://github.com/egemensariaslan/mpsynth"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mpsynth"]

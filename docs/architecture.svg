@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 420" width="1120" height="420">
+  <title>MPSynth pipeline</title>
+  <desc>A classical vector is decomposed into a Matrix Product State by a sweep of truncated SVDs, then approximated by a sequence of exact bond-2 staircases (the disentangling loop), each lowered to RZ/RY/CX gates by an exact Cartan decomposition, then exported to five quantum frameworks. Two checks run against the result: fidelity re-simulated by an independent simulator, and unitarity of the emitted circuit.</desc>
+  <style>
+    .bg    { fill: #FDFCFA }
+    .ink   { fill: #16161A; stroke: #16161A }
+    .muted { fill: #454B59; stroke: #454B59 }
+    .faint { fill: #646A78; stroke: #646A78 }
+    .s     { stroke: #16161A; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round }
+    .dash  { stroke: #6E7481; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-dasharray: 7 6 }
+    .box   { fill: #FDFCFA; stroke: #16161A; stroke-width: 1.8; rx: 6 }
+    .h-teal   { stroke: #2f8f7e; fill: none }
+    .h-amber  { stroke: #b38f1e; fill: none }
+    .m-ok     { stroke: #2f8f5b; fill: none }
+    text { font-family: Helvetica Neue, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    @media (prefers-color-scheme: dark) {
+      .bg    { fill: #0D1117 }
+      .ink   { fill: #EDEDEC; stroke: #EDEDEC }
+      .muted { fill: #B8BCC4; stroke: #B8BCC4 }
+      .faint { fill: #8B8B88; stroke: #8B8B88 }
+      .s     { stroke: #EDEDEC }
+      .dash  { stroke: #8890A0 }
+      .box   { fill: #0D1117; stroke: #EDEDEC }
+      .h-teal  { stroke: #7fd1c1 }
+      .h-amber { stroke: #d8b26a }
+      .m-ok    { stroke: #6fbf8f }
+    }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="1120" height="420"/>
+
+  <!-- 1: input vector -->
+  <g transform="translate(24,42)">
+    <rect class="box" x="0" y="0" width="150" height="106" rx="6"/>
+    <text x="75" y="46" text-anchor="middle" class="ink" font-size="13" font-weight="600">Classical vector</text>
+    <text x="75" y="66" text-anchor="middle" class="faint mono" font-size="11">v ∈ ℝ^N or ℂ^N</text>
+  </g>
+  <path class="s" marker-end="url(#arrow)" d="M 178,95 L 214,95"/>
+
+  <!-- 2: MPS decomposition -->
+  <g transform="translate(218,42)">
+    <rect class="box h-teal" x="0" y="0" width="176" height="106" rx="6"/>
+    <text x="88" y="24" text-anchor="middle" class="ink" font-size="13" font-weight="600">MPS decomposition</text>
+    <text x="88" y="44" text-anchor="middle" class="muted" font-size="10.5">sweep of truncated SVDs</text>
+    <text x="88" y="62" text-anchor="middle" class="faint mono" font-size="10">mpsynth.mps</text>
+    <text x="88" y="88" text-anchor="middle" class="faint" font-size="10">discarded weight tracked,</text>
+    <text x="88" y="100" text-anchor="middle" class="faint" font-size="10">bounds 1 − F exactly</text>
+  </g>
+  <path class="s" marker-end="url(#arrow)" d="M 398,95 L 434,95"/>
+
+  <!-- 3: disentangling loop -->
+  <g transform="translate(438,30)">
+    <rect class="box h-teal" x="0" y="0" width="188" height="130" rx="6"/>
+    <text x="94" y="22" text-anchor="middle" class="ink" font-size="13" font-weight="600">Disentangling loop</text>
+    <text x="94" y="40" text-anchor="middle" class="muted" font-size="10.5">exact bond-2 staircase,</text>
+    <text x="94" y="52" text-anchor="middle" class="muted" font-size="10.5">repeated per layer</text>
+    <text x="94" y="70" text-anchor="middle" class="faint mono" font-size="10">mpsynth.synthesis</text>
+    <path class="dash" d="M 30,84 h 128"/>
+    <text x="94" y="104" text-anchor="middle" class="faint" font-size="10">Ran, Phys. Rev. A 101,</text>
+    <text x="94" y="116" text-anchor="middle" class="faint" font-size="10">032310 (2020)</text>
+  </g>
+  <path class="s" marker-end="url(#arrow)" d="M 626,95 L 662,95"/>
+
+  <!-- 4: KAK gate synthesis -->
+  <g transform="translate(666,30)">
+    <rect class="box h-amber" x="0" y="0" width="188" height="130" rx="6"/>
+    <text x="94" y="22" text-anchor="middle" class="ink" font-size="13" font-weight="600">KAK gate synthesis</text>
+    <text x="94" y="40" text-anchor="middle" class="muted" font-size="10.5">Cartan decomposition,</text>
+    <text x="94" y="52" text-anchor="middle" class="muted" font-size="10.5">minimum CX per gate</text>
+    <text x="94" y="70" text-anchor="middle" class="faint mono" font-size="10">mpsynth.decompose</text>
+    <path class="dash" d="M 30,84 h 128"/>
+    <text x="94" y="104" text-anchor="middle" class="faint" font-size="10">verified against its target</text>
+    <text x="94" y="116" text-anchor="middle" class="faint" font-size="10">before being emitted</text>
+  </g>
+  <path class="s" marker-end="url(#arrow)" d="M 854,95 L 890,95"/>
+
+  <!-- 5: circuit IR -->
+  <g transform="translate(894,42)">
+    <rect class="box" x="0" y="0" width="150" height="106" rx="6"/>
+    <text x="75" y="24" text-anchor="middle" class="ink" font-size="13" font-weight="600">Circuit IR</text>
+    <text x="75" y="44" text-anchor="middle" class="muted" font-size="10.5">{RZ, RY, CX}</text>
+    <text x="75" y="64" text-anchor="middle" class="faint mono" font-size="10">mpsynth.circuit</text>
+    <text x="75" y="88" text-anchor="middle" class="faint" font-size="10">one IR, every target</text>
+  </g>
+
+  <!-- down to export targets -->
+  <path class="s" marker-end="url(#arrow)" d="M 969,148 L 969,196"/>
+  <g transform="translate(24,200)">
+    <rect class="box" x="0" y="0" width="1072" height="52" rx="6"/>
+    <text x="536" y="20" text-anchor="middle" class="ink" font-size="12" font-weight="600">Export — mpsynth.exporters</text>
+    <text x="536" y="40" text-anchor="middle" class="faint mono" font-size="10.5">
+      OpenQASM 2/3 · QIR · Q# · PennyLane · Qiskit
+    </text>
+  </g>
+
+  <!-- verification, branching from Circuit IR down through the gap between stages 3/4 -->
+  <path class="s" d="M 894,95 L 856,95"/>
+  <path class="s" d="M 856,95 L 856,296"/>
+  <path class="s" marker-end="url(#arrow)" d="M 856,296 L 400,296"/>
+
+  <g transform="translate(24,268)">
+    <rect class="box m-ok" x="0" y="0" width="360" height="120" rx="6"/>
+    <text x="180" y="24" text-anchor="middle" class="ink" font-size="13" font-weight="600">Verification</text>
+    <text x="20" y="46" class="muted" font-size="10.5">— fidelity re-simulated by a second,</text>
+    <text x="20" y="60" class="muted" font-size="10.5">&#160;&#160;structurally different simulator</text>
+    <text x="20" y="80" class="muted" font-size="10.5">— unitarity of the emitted circuit, U†U = I</text>
+    <text x="20" y="100" class="muted" font-size="10.5">— cross-checked against Qiskit's own</text>
+    <text x="20" y="114" class="muted" font-size="10.5">&#160;&#160;Statevector, not just MPSynth's own code</text>
+  </g>
+
+  <!-- footer: the headline number -->
+  <g transform="translate(420,330)">
+    <text x="0" y="0" class="ink mono" font-size="14" font-weight="600">18 qubits, 4 layers: 161 CNOTs</text>
+    <text x="0" y="24" class="faint mono" font-size="13">vs. 262,142 CNOTs for exact amplitude encoding</text>
+    <text x="0" y="48" class="faint mono" font-size="13">— a 1,628× reduction, measured, not estimated</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="ink" stroke="none"/>
+    </marker>
+  </defs>
+</svg>

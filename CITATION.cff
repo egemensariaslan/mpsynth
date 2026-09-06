@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+title: >-
+  MPSynth: Shallow Approximate Quantum State Preparation from Matrix
+  Product States
+message: >-
+  If you use this software, or results produced with it, please cite it.
+  If you cite a specific number, please say which one -- the CNOT-reduction
+  figures are measured against Qiskit's own exact StatePreparation
+  construction on eight named datasets, not a universal constant.
+type: software
+authors:
+  - given-names: Egemen
+    family-names: Sarıaslan
+version: 0.1.0
+date-released: '2026-09-06'
+license: Apache-2.0
+repository-code: 'https://github.com/egemensariaslan/mpsynth'
+abstract: >-
+  MPSynth compresses an N-dimensional classical vector into a Matrix
+  Product State, truncates its bond dimension to a user-chosen fidelity
+  tolerance, and synthesises the result as a shallow stack of
+  nearest-neighbour two-qubit staircases -- depth growing linearly in the
+  qubit count rather than exponentially, as exact amplitude encoding
+  requires. Every two-qubit gate is lowered to RZ/RY/CX by an exact Cartan
+  (KAK) decomposition using the minimum CX count its coordinates allow.
+  Circuits export to OpenQASM 2.0/3.0, QIR, Q#, PennyLane and Qiskit from
+  one shared gate set. Measured against Qiskit's own exact
+  StatePreparation construction, MPSynth uses 14.6x fewer CNOTs on
+  average (95% CI +/-6.7) at 99.9% fidelity, with CNOT count scaling
+  linearly in qubit count (R^2 = 0.982, n = 8 to 18).
+notes: >-
+  Capstone project for the Microsoft AI/ML Summer Internship Programme,
+  2026. A capstone project produced during the programme; not affiliated
+  with or endorsed by Microsoft Corporation.
+keywords:
+  - quantum computing
+  - state preparation
+  - matrix product states
+  - tensor networks
+  - amplitude encoding
+  - quantum circuit synthesis
+  - OpenQASM

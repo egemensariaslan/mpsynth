@@ -1,0 +1,96 @@
+MPSynth
+Copyright (c) 2026 Egemen Sarıaslan
+
+Built for the Microsoft AI/ML Summer Internship Programme, 2026. This is a
+capstone project produced during that programme: it is not a Microsoft
+product and is neither affiliated with nor endorsed by Microsoft
+Corporation. "Microsoft" and "Azure" are trademarks of Microsoft
+Corporation and are used here only to identify programmes and frameworks
+this project references.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may
+not use this file except in compliance with the License. You may obtain a
+copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations
+under the License.
+
+What follows is what that means in practice, and the terms of the
+third-party work this project depends on.
+
+
+── What Apache 2.0 asks of you ───────────────────────────────────────────
+
+Everything here -- source, tests, documentation, and the committed example
+vectors in examples/ -- is under one licence, Apache 2.0. It is permissive:
+use it, modify it, ship it, sell it. Its conditions are that the licence
+and this NOTICE travel with any distribution, that modified files say they
+were modified, and that attribution notices are retained. It also carries
+an express patent grant and a patent-retaliation clause.
+
+One request that is not a licence condition, only good practice: if you
+publish a number produced with this system, say which one you're quoting.
+The CNOT-reduction and scaling figures in validation/VALIDATION.md are
+measured against specific named datasets and a specific Qiskit version
+(2.5.2 at time of writing) -- they are not a universal constant, and
+Qiskit's own exact StatePreparation has a documented numerical edge case
+on one of the eight datasets tested, noted there rather than hidden.
+
+
+── Runtime dependency ───────────────────────────────────────────────────
+
+NumPy                        BSD-3-Clause
+    The sole runtime dependency. The synthesis core is a sequence of
+    singular value decompositions, so there is no honest way to avoid it;
+    see the "one dependency" note in the README.
+
+
+── Optional dependencies (plotting, dev tooling, cross-validation) ──────
+
+matplotlib                  BSD-style (Matplotlib License)
+    Optional; only used by TradeoffProfile.plot() and the --plot CLI flag.
+SciPy                        BSD-3-Clause
+    Dev/test only; used to independently verify circuit constructions
+    against scipy.linalg.expm in tests/test_decompose.py.
+pytest                       MIT
+mypy                         MIT
+ruff                         MIT
+Qiskit                       Apache-2.0
+    Dev/test only. Used two ways: (1) as an export target
+    (mpsynth.exporters.to_qiskit / build_qiskit), and (2) as the
+    independent baseline in validation/run_validation.py -- its own
+    Statevector simulator and StatePreparation construction are what
+    MPSynth's fidelity and CNOT-count claims are cross-validated against,
+    deliberately not using MPSynth's own code to check MPSynth's own
+    arithmetic.
+qiskit-qasm3-import           Apache-2.0
+    Dev/test only; round-trips exported OpenQASM 3.0 back through
+    Qiskit's own parser in tests/test_exporters.py.
+PennyLane                    Apache-2.0
+    Optional export target and dev/test dependency; used to verify the
+    big-endian amplitude-order convention independently of Qiskit's
+    little-endian one.
+
+Exact pinned version floors are in pyproject.toml. Where a licence is
+stated above it reflects each project's own declaration at the time of
+writing; consult each project for authoritative terms.
+
+
+── Frameworks targeted by the exporters (not runtime dependencies) ─────
+
+OpenQASM 2.0 / 3.0, QIR (LLVM base profile) and Q# are text/IR formats
+MPSynth emits; no code from any of their reference implementations is
+vendored or redistributed here.
+
+
+── Standards and specifications ─────────────────────────────────────────
+
+OpenQASM 2.0 / 3.0 and the QIR specification define the two textual
+formats mpsynth.exporters.qasm and mpsynth.exporters.qir emit. The
+implementations here are original; the specifications are their
+respective standards bodies'.

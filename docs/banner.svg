@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 320" width="1180" height="320">
+  <title>MPSynth</title>
+  <desc>MPSynth compresses a classical vector into a Matrix Product State and synthesises a shallow circuit from it. On the left, exact amplitude encoding: gate lines cross densely across every qubit, cost growing exponentially with register size. On the right, the same state prepared as a Matrix Product State staircase: each qubit picks up its bond from the last and hands the next one forward, cost growing linearly instead.</desc>
+  <style>
+    .bg    { fill: #FDFCFA }
+    .ink   { fill: #16161A; stroke: #16161A }
+    .muted { fill: #454B59; stroke: #454B59 }
+    .faint { fill: #646A78; stroke: #646A78 }
+    .s     { stroke: #16161A; stroke-width: 2.1; fill: none;
+             stroke-linecap: round; stroke-linejoin: round }
+    .thin  { stroke: #4A5060; stroke-width: 1.5; fill: none; stroke-linecap: round }
+    .dash  { stroke: #6E7481; stroke-width: 1.8; fill: none;
+             stroke-linecap: round; stroke-dasharray: 9 7 }
+    .h-teal   { stroke: #2f8f7e }
+    .h-amber  { stroke: #b38f1e }
+    .h-grey   { stroke: #99a0aa }
+    [class^="h-"] { stroke-width: 1.85; fill: none; stroke-linecap: round }
+    .m-ok   { stroke: #2f8f5b }
+    [class^="m-"] { fill: none; stroke-linecap: round; stroke-linejoin: round }
+
+    /* Dark fills are lighter than the light-theme set, not darker, by more than
+       looks right in a swatch -- a thin stroke on near-black antialiases toward
+       the background and reads at roughly two-thirds its nominal colour. */
+    @media (prefers-color-scheme: dark) {
+      .bg    { fill: #0D1117 }
+      .ink   { fill: #EDEDEC; stroke: #EDEDEC }
+      .muted { fill: #B8BCC4; stroke: #B8BCC4 }
+      .faint { fill: #8B8B88; stroke: #8B8B88 }
+      .s     { stroke: #EDEDEC }
+      .thin  { stroke: #A6ACB8 }
+      .dash  { stroke: #8890A0 }
+      .h-teal  { stroke: #7fd1c1 }
+      .h-amber { stroke: #d8b26a }
+      .h-grey  { stroke: #7a828f }
+      .m-ok    { stroke: #6fbf8f }
+    }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="1180" height="320"/>
+
+  <!-- title -->
+  <text x="40" y="52" class="ink" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="30" font-weight="600" letter-spacing="2">MPSYNTH</text>
+  <text x="40" y="76" class="faint" font-family="Helvetica Neue, Arial, sans-serif" font-size="13">
+    Shallow quantum state preparation from Matrix Product States
+  </text>
+
+  <!-- ═══ left panel: exact encoding, O(2^n) ═══ -->
+  <g transform="translate(40,110)">
+    <text x="0" y="-14" class="muted" font-family="Helvetica Neue, Arial, sans-serif" font-size="12" letter-spacing="0.5">
+      EXACT ENCODING — O(2ⁿ) GATES
+    </text>
+    <!-- 5 qubit wires -->
+    <g class="thin">
+      <line x1="0" y1="0"  x2="440" y2="0"/>
+      <line x1="0" y1="30" x2="440" y2="30"/>
+      <line x1="0" y1="60" x2="440" y2="60"/>
+      <line x1="0" y1="90" x2="440" y2="90"/>
+      <line x1="0" y1="120" x2="440" y2="120"/>
+    </g>
+    <!-- dense crossing gates: a hand-placed thicket standing in for O(2^n) -->
+    <g class="s" stroke-width="1.6">
+      <line x1="18"  y1="-6" x2="18"  y2="126"/>
+      <line x1="34"  y1="-6" x2="34"  y2="66"/>
+      <line x1="50"  y1="24" x2="50"  y2="126"/>
+      <line x1="66"  y1="-6" x2="66"  y2="96"/>
+      <line x1="82"  y1="24" x2="82"  y2="126"/>
+      <line x1="98"  y1="-6" x2="98"  y2="66"/>
+      <line x1="114" y1="24" x2="114" y2="96"/>
+      <line x1="130" y1="-6" x2="130" y2="126"/>
+      <line x1="146" y1="24" x2="146" y2="66"/>
+      <line x1="162" y1="-6" x2="162" y2="96"/>
+      <line x1="178" y1="24" x2="178" y2="126"/>
+      <line x1="194" y1="-6" x2="194" y2="66"/>
+      <line x1="210" y1="24" x2="210" y2="96"/>
+      <line x1="226" y1="-6" x2="226" y2="126"/>
+      <line x1="242" y1="24" x2="242" y2="66"/>
+      <line x1="258" y1="-6" x2="258" y2="96"/>
+      <line x1="274" y1="24" x2="274" y2="126"/>
+      <line x1="290" y1="-6" x2="290" y2="66"/>
+      <line x1="306" y1="24" x2="306" y2="96"/>
+      <line x1="322" y1="-6" x2="322" y2="126"/>
+      <line x1="338" y1="24" x2="338" y2="66"/>
+      <line x1="354" y1="-6" x2="354" y2="96"/>
+      <line x1="370" y1="24" x2="370" y2="126"/>
+      <line x1="386" y1="-6" x2="386" y2="66"/>
+      <line x1="402" y1="24" x2="402" y2="96"/>
+      <line x1="418" y1="-6" x2="418" y2="126"/>
+    </g>
+    <g class="ink">
+      <circle cx="18" cy="0"   r="3.4"/><circle cx="18" cy="120" r="3.4"/>
+      <circle cx="50" cy="30"  r="3.4"/><circle cx="50" cy="120" r="3.4"/>
+      <circle cx="82" cy="30"  r="3.4"/><circle cx="82" cy="120" r="3.4"/>
+      <circle cx="114" cy="30" r="3.4"/><circle cx="114" cy="90" r="3.4"/>
+      <circle cx="146" cy="30" r="3.4"/><circle cx="146" cy="60" r="3.4"/>
+      <circle cx="178" cy="30" r="3.4"/><circle cx="178" cy="120" r="3.4"/>
+      <circle cx="210" cy="30" r="3.4"/><circle cx="210" cy="90" r="3.4"/>
+      <circle cx="242" cy="30" r="3.4"/><circle cx="242" cy="60" r="3.4"/>
+      <circle cx="274" cy="30" r="3.4"/><circle cx="274" cy="120" r="3.4"/>
+      <circle cx="306" cy="30" r="3.4"/><circle cx="306" cy="90" r="3.4"/>
+      <circle cx="338" cy="30" r="3.4"/><circle cx="338" cy="60" r="3.4"/>
+      <circle cx="370" cy="30" r="3.4"/><circle cx="370" cy="120" r="3.4"/>
+      <circle cx="402" cy="30" r="3.4"/><circle cx="402" cy="90" r="3.4"/>
+    </g>
+    <text x="0" y="150" class="faint" font-family="ui-monospace, monospace" font-size="12">
+      n = 18 qubits  →  262,142 CNOTs
+    </text>
+  </g>
+
+  <!-- arrow -->
+  <g transform="translate(505,150)">
+    <line x1="0" y1="0" x2="80" y2="0" class="dash"/>
+    <path d="M 72,-8 L 88,0 L 72,8 Z" class="ink" stroke="none"/>
+    <text x="40" y="-16" text-anchor="middle" class="muted" font-family="ui-monospace, monospace" font-size="11">MPS</text>
+  </g>
+
+  <!-- ═══ right panel: the staircase, O(n) ═══ -->
+  <g transform="translate(640,110)">
+    <text x="0" y="-14" class="muted" font-family="Helvetica Neue, Arial, sans-serif" font-size="12" letter-spacing="0.5">
+      MPSYNTH — O(n) STAIRCASE
+    </text>
+    <g class="thin">
+      <line x1="0" y1="0"  x2="480" y2="0"/>
+      <line x1="0" y1="30" x2="480" y2="30"/>
+      <line x1="0" y1="60" x2="480" y2="60"/>
+      <line x1="0" y1="90" x2="480" y2="90"/>
+      <line x1="0" y1="120" x2="480" y2="120"/>
+    </g>
+    <!-- the staircase: one 2-qubit gate consuming the bond, one per qubit pair -->
+    <g class="h-teal">
+      <line x1="40"  y1="0"  x2="40"  y2="30"/>
+      <line x1="120" y1="30" x2="120" y2="60"/>
+      <line x1="200" y1="60" x2="200" y2="90"/>
+      <line x1="280" y1="90" x2="280" y2="120"/>
+    </g>
+    <g class="ink">
+      <rect x="26" y="-11" width="28" height="22" rx="3" fill="none" class="h-teal"/>
+      <rect x="106" y="19" width="28" height="22" rx="3" fill="none" class="h-teal"/>
+      <rect x="186" y="49" width="28" height="22" rx="3" fill="none" class="h-teal"/>
+      <rect x="266" y="79" width="28" height="22" rx="3" fill="none" class="h-teal"/>
+    </g>
+    <!-- small single-qubit rotations riding each wire -->
+    <g class="h-amber">
+      <rect x="356" y="-8"  width="16" height="16" rx="2.5" fill="none"/>
+      <rect x="356" y="22"  width="16" height="16" rx="2.5" fill="none"/>
+      <rect x="356" y="52"  width="16" height="16" rx="2.5" fill="none"/>
+      <rect x="356" y="82"  width="16" height="16" rx="2.5" fill="none"/>
+      <rect x="356" y="112" width="16" height="16" rx="2.5" fill="none"/>
+    </g>
+    <text x="0" y="150" class="faint" font-family="ui-monospace, monospace" font-size="12">
+      n = 18 qubits, 4 layers  →  161 CNOTs
+    </text>
+  </g>
+</svg>
